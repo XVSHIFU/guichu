@@ -1,4 +1,4 @@
-# 归处 · Local Desk MVP
+# 归处 · Local Desk
 
 运行根目录的「启动工作台.cmd」，访问 http://127.0.0.1:8765 。关闭网页不会停止本地服务；不设置开机自启。旧版静态清单及采集脚本保存在 `../local-archive/`，不进入仓库。
 
@@ -106,9 +106,9 @@ Claude 品牌图标来自 [Lobe Icons](https://github.com/lobehub/lobe-icons)，
 
 根目录“启动工作台.cmd”启动并打开页面；“停止工作台.cmd”安全停止。停止会核对进程身份，并在分析、统计、扫描或配置修改期间拒绝；不按端口强杀进程。也可运行 `Start-Workbench.ps1 -NoBrowser`，脚本支持指定 `-Port`。
 
-“备份工作台.cmd”使用 SQLite 在线备份生成 `mvp/data/backups/*.sqlite3`。恢复前先停止服务，再运行 `mvp/Restore-Workbench.ps1 -BackupPath <该工作区备份绝对路径>`；恢复会检查完整性并另存当前数据库。备份脚本只备份数据库，不包含模型密钥文件、图标或配置原字节备份；搬迁完整工作台时另行保留 data/config-backups，否则历史中的配置恢复入口会缺少备份。
+“备份工作台.cmd”使用 SQLite 在线备份生成 `app/data/backups/*.sqlite3`。恢复前先停止服务，再运行 `app/Restore-Workbench.ps1 -BackupPath <该工作区备份绝对路径>`；恢复会检查完整性并另存当前数据库。备份脚本只备份数据库，不包含模型密钥文件、图标或配置原字节备份；搬迁完整工作台时另行保留 data/config-backups，否则历史中的配置恢复入口会缺少备份。
 
-日志在 `mvp/data/server.log` 和 `server-error.log`，进程记录在 `server-process.json`。已有服务若非本脚本启动且无可信记录，脚本会拒绝认领或强停。
+日志在 `app/data/server.log` 和 `server-error.log`，进程记录在 `server-process.json`。已有服务若非本脚本启动且无可信记录，脚本会拒绝认领或强停。
 
 
 ## 检查历史与人工关联

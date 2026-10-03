@@ -115,9 +115,9 @@ SQLite 权威状态             模型适配器 / 本机采集与执行
 | 角色 | 负责结果与文件范围（拟定） | 不负责 |
 | --- | --- | --- |
 | 主 Agent／集成负责人 | `PLAN.md`、API 契约、`main.jsx` 页面壳、启动入口、集成与发布检查 | 不把模块任务交叉写给多个 Agent |
-| A：数据与采集 | `mvp/backend/storage/`、`inventory/`、`filesystem/`，数据库迁移及后端相关测试 | 不改助手界面，不接模型 |
-| B：前端与交互 | `mvp/src/features/assistant/`、历史页、简览到助手衔接、局部样式与前端测试 | 不自行改变 API、数据库结构与执行权限 |
-| C：助手与执行 | `mvp/backend/assistant/`、模型适配、任务事件；P3 增加 `actions/` 和恢复测试 | 不代用户确认，不调用任意系统命令 |
+| A：数据与采集 | `app/backend/storage/`、`inventory/`、`filesystem/`，数据库迁移及后端相关测试 | 不改助手界面，不接模型 |
+| B：前端与交互 | `app/src/features/assistant/`、历史页、简览到助手衔接、局部样式与前端测试 | 不自行改变 API、数据库结构与执行权限 |
+| C：助手与执行 | `app/backend/assistant/`、模型适配、任务事件；P3 增加 `actions/` 和恢复测试 | 不代用户确认，不调用任意系统命令 |
 | 复核角色（阶段收尾时复用空闲槽位） | 只读检查跨模块流程，运行明确的集成／故障场景，向主 Agent 报告证据 | 不重复开发或无范围地全仓重构 |
 
 目录是拟定职责边界，尚未创建；P0 由主 Agent 完成最小拆分后交接。`server.py`、`main.jsx`、共享样式和依赖锁文件先由主 Agent 独占整合；新模块各自拥有局部文件，避免同时堆叠修改。
@@ -260,7 +260,7 @@ MCP 全局配置历史已通过浏览器mock验收：当前清单无该对象仍
 
 用户配置并明确要求继续后，使用已保存的 deepseek-v4.1-flash 连接：连接测试成功（53 token）。真实Git对象问答成功，模型实际调用get_object，返回对象ID、机器级注册表来源及检查时间，并说明注册存在不证明实际可用；本次4068 token。未读取目录正文或传输密钥。
 
-浏览器重新打开“真实接入验收 · Git（只读）”，成功状态、回答、get_object和用量显示通过；截图mvp/test-results/live-model-history.png。独立真实取消请求终态cancelled，结束后事件数保持不变。会话保留供用户查看，证据ID存mvp/test-results/live-model-run.json（无密钥）。
+浏览器重新打开“真实接入验收 · Git（只读）”，成功状态、回答、get_object和用量显示通过；截图app/test-results/live-model-history.png。独立真实取消请求终态cancelled，结束后事件数保持不变。会话保留供用户查看，证据ID存app/test-results/live-model-run.json（无密钥）。
 
 最终证据范围：125项后端测试覆盖持久化、隔离HTTP动作/恢复、来源/冲突/幂等/故障；浏览器mock覆盖来源互链、601事件恢复、消失对象MCP恢复及各受限动作；真实模型覆盖请求→工具→有来源回答、历史与取消。本机扫描、启动停止、数据库备份恢复和新建临时目录回收已有验证。实际用户配置/软件未为验收而修改或卸载。
 

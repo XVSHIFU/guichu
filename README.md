@@ -18,7 +18,7 @@
 需要 Windows、Python 3.12+、Node.js 20+。
 
 ```powershell
-cd mvp
+cd app
 python -m pip install -r requirements.txt
 npm ci
 npm run build
@@ -28,27 +28,27 @@ cd ..
 
 打开 http://127.0.0.1:8765 ，在「设置 → 模型连接」配置自己的服务。停止服务使用「停止工作台.cmd」，备份使用「备份工作台.cmd」。
 
-清单与会话保存在本机；使用模型时会将请求和相关上下文发送到所配置的服务。配置变更先预览，再由用户确认执行。当前支持范围见 [应用说明](mvp/README.md)。
+清单与会话保存在本机；使用模型时会将请求和相关上下文发送到所配置的服务。配置变更先预览，再由用户确认执行。当前支持范围见 [应用说明](app/README.md)。
 
 ## 目录
 
 | 路径 | 内容 |
 | --- | --- |
-| `mvp/src/` | React 界面与主题 |
-| `mvp/public/` | 浏览器图标和静态资源 |
-| `mvp/agent/` | 产品指令、技能、上下文和工具 |
-| `mvp/*.py` | 本机服务、采集、模型及操作处理 |
-| `mvp/tests/` | 后端与浏览器测试 |
+| `app/src/` | React 界面与主题 |
+| `app/public/` | 浏览器图标和静态资源 |
+| `app/agent/` | 产品指令、技能、上下文和工具 |
+| `app/*.py` | 本机服务、采集、模型及操作处理 |
+| `app/tests/` | 后端与浏览器测试 |
 | `docs/` | 平台与 Agent 实施计划 |
 | `PRODUCT.md` / `DESIGN.md` | 产品与设计约定 |
 | `local-archive/` | 本机旧版清单和采集资料，不进入仓库 |
 
-运行数据、密钥、备份、构建产物和测试截图均已加入忽略规则。源码保留现有 `mvp/` 路径，启动脚本无需迁移。
+运行数据、密钥、备份、构建产物和测试截图均已加入忽略规则。应用源码位于 `app/`，根目录启动脚本会自动定位应用。
 
 ## 开发验证
 
 ```powershell
-cd mvp
+cd app
 python -m unittest discover -s tests -p "test_*.py"
 npm run build
 ```

@@ -12,11 +12,11 @@
 
 已核对本项目源码：
 
-- `mvp/assistant_runtime.py`：兼容 API、流式循环、工具调用上限、取消、持久化运行与事件；当前只读。
-- `mvp/assistant_tools.py`：search_objects / get_object / get_relations / read_config_summary / list_directory。配置摘要来自扫描，并不实时读取正文；目录只列当前层。
-- `mvp/assistant_store.py`：会话、消息与草稿。
-- `mvp/action_store.py`：工作台备注和处理意向的版本化提案。
-- `mvp/mcp_config_action.py`、`mcp_action_store.py`：受支持 TOML MCP 表的预览、写前备份、摘要冲突检测、执行与恢复；不等于支持所有宿主配置格式。
+- `app/assistant_runtime.py`：兼容 API、流式循环、工具调用上限、取消、持久化运行与事件；当前只读。
+- `app/assistant_tools.py`：search_objects / get_object / get_relations / read_config_summary / list_directory。配置摘要来自扫描，并不实时读取正文；目录只列当前层。
+- `app/assistant_store.py`：会话、消息与草稿。
+- `app/action_store.py`：工作台备注和处理意向的版本化提案。
+- `app/mcp_config_action.py`、`mcp_action_store.py`：受支持 TOML MCP 表的预览、写前备份、摘要冲突检测、执行与恢复；不等于支持所有宿主配置格式。
 - 前端已经有 Markdown、对象上下文、轨迹、操作记录及详情抽屉。
 
 待补：模块化 Prompt、技能加载、任务上下文选择、统一工具注册、助手发起提案及等待确认后续跑、MCP 客户端、完整工具轨迹。保留模型设置与 SQLite，避免重写已可用部分。
@@ -138,7 +138,7 @@ idle → preparing → reasoning ↔ tool_running → awaiting_confirmation → 
 
 若使用团队：主Agent负责契约和集成；运行器负责人负责Prompt/Skill/上下文；工具负责人负责动作/MCP；前端负责人负责提案确认和轨迹。先确定接口再并行，避免多人修改同一文件。
 
-拟新增：mvp/agent/prompts/、mvp/agent/skills/、context.py、registry.py、policy.py、mcp_client.py。先在现有模块旁增加最少必要文件，再逐步抽离；现有SQLite保持权威。技能文件为产品资源，不能仅创建目录而没有加载器。
+拟新增：app/agent/prompts/、app/agent/skills/、context.py、registry.py、policy.py、mcp_client.py。先在现有模块旁增加最少必要文件，再逐步抽离；现有SQLite保持权威。技能文件为产品资源，不能仅创建目录而没有加载器。
 
 ## 11. 验收案例
 
