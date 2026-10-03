@@ -16,3 +16,9 @@
 .venv/
 Thumbs.db
 .DS_Store
+
+/release/
+
+/app/maintenance.lock
+/app/data-before-import-*/
+/app/data-import-*/

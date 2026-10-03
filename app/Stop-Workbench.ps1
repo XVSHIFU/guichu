@@ -1,11 +1,11 @@
-param([ValidateRange(1024,65535)][int]$Port = 8765)
+﻿param([ValidateRange(1024,65535)][int]$Port = 8765)
 $ErrorActionPreference = 'Stop'
 $workbenchRoot = [IO.Path]::GetFullPath($PSScriptRoot)
 $serverPath = Join-Path $workbenchRoot 'server.py'
 $dataPath = Join-Path $workbenchRoot 'data'
 $recordPath = Join-Path $dataPath 'server-process.json'
 if (-not (Test-Path -LiteralPath $recordPath)) { throw 'No workbench process record; refusing to stop processes by port or name.' }
-$maintenanceLock = [IO.File]::Open((Join-Path $dataPath 'maintenance.lock'), 'OpenOrCreate', 'ReadWrite', 'None')
+$maintenanceLock = [IO.File]::Open((Join-Path $workbenchRoot 'maintenance.lock'), 'OpenOrCreate', 'ReadWrite', 'None')
 try {
     $record = Get-Content -LiteralPath $recordPath -Raw | ConvertFrom-Json
     if ($record.server_path -ne $serverPath -or [int]$record.port -ne $Port) { throw 'Workbench path or port does not match the process record.' }

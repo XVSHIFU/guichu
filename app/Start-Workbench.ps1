@@ -1,11 +1,11 @@
-param([ValidateRange(1024,65535)][int]$Port = 8765, [switch]$NoBrowser)
+﻿param([ValidateRange(1024,65535)][int]$Port = 8765, [switch]$NoBrowser)
 $ErrorActionPreference = 'Stop'
 $workbenchRoot = [IO.Path]::GetFullPath($PSScriptRoot)
 $serverPath = Join-Path $workbenchRoot 'server.py'
 $dataPath = Join-Path $workbenchRoot 'data'
 $recordPath = Join-Path $dataPath 'server-process.json'
 New-Item -ItemType Directory -Force -Path $dataPath | Out-Null
-$maintenanceLock = [IO.File]::Open((Join-Path $dataPath 'maintenance.lock'), 'OpenOrCreate', 'ReadWrite', 'None')
+$maintenanceLock = [IO.File]::Open((Join-Path $workbenchRoot 'maintenance.lock'), 'OpenOrCreate', 'ReadWrite', 'None')
 try {
     if (Test-Path -LiteralPath $recordPath) {
         $record = Get-Content -LiteralPath $recordPath -Raw | ConvertFrom-Json
@@ -25,7 +25,8 @@ try {
     if (-not (Test-Path -LiteralPath (Join-Path $workbenchRoot 'dist/index.html'))) { throw 'Build the frontend first: npm install; npm run build.' }
     $probe = [Net.Sockets.TcpListener]::new([Net.IPAddress]::Loopback, $Port)
     try { $probe.Start() } catch { throw "Port $Port is occupied; no existing process was stopped. Choose another port." } finally { $probe.Stop() }
-    $pythonPath = (Get-Command python -CommandType Application -ErrorAction Stop | Select-Object -First 1).Source
+    $pythonPath = Join-Path $workbenchRoot 'runtime/python.exe'
+    if (-not (Test-Path -LiteralPath $pythonPath)) { $pythonPath = (Get-Command python -CommandType Application -ErrorAction Stop | Select-Object -First 1).Source }
     $arguments = '"' + $serverPath + '" --port ' + $Port
     $launched = Start-Process -FilePath $pythonPath -ArgumentList $arguments -WorkingDirectory $workbenchRoot -WindowStyle Hidden -PassThru -RedirectStandardOutput (Join-Path $dataPath 'server.log') -RedirectStandardError (Join-Path $dataPath 'server-error.log')
     $launched.Refresh()

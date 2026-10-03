@@ -1,0 +1,34 @@
+name: Verify
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+      - run: python -m pip install -r app/requirements-portable.lock
+      - run: npm ci --prefix app
+      - run: python scripts/verify_agent.py
+      - run: python -m unittest discover -s app/tests -p "test_*.py"
+      - run: npm --prefix app run build
+      - name: Start isolated workbench
+        shell: pwsh
+        run: ./app/Start-Workbench.ps1 -NoBrowser
+      - run: npm --prefix app run test:ui:core
+      - name: Stop workbench
+        if: always()
+        shell: pwsh
+        run: |
+          if (Test-Path app/data/server-process.json) { ./app/Stop-Workbench.ps1 }

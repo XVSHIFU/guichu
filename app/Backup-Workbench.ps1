@@ -1,10 +1,11 @@
-param()
+﻿param()
 $ErrorActionPreference = 'Stop'
 $workbenchRoot = [IO.Path]::GetFullPath($PSScriptRoot)
-$pythonPath = (Get-Command python -CommandType Application -ErrorAction Stop | Select-Object -First 1).Source
+$pythonPath = Join-Path $workbenchRoot 'runtime/python.exe'
+    if (-not (Test-Path -LiteralPath $pythonPath)) { $pythonPath = (Get-Command python -CommandType Application -ErrorAction Stop | Select-Object -First 1).Source }
 $dataPath = Join-Path $workbenchRoot 'data'
 if (-not (Test-Path -LiteralPath $dataPath)) { throw 'Workbench data directory does not exist.' }
-$maintenanceLock = [IO.File]::Open((Join-Path $dataPath 'maintenance.lock'), 'OpenOrCreate', 'ReadWrite', 'None')
+$maintenanceLock = [IO.File]::Open((Join-Path $workbenchRoot 'maintenance.lock'), 'OpenOrCreate', 'ReadWrite', 'None')
 try {
 $backupCode = @'
 import os, sqlite3, sys, uuid

@@ -1,1 +1,29 @@
-{"name":"local-desk","version":"0.1.0","private":true,"type":"module","scripts":{"dev":"vite --host 127.0.0.1","build":"vite build","test:ui":"node tests/browser.mjs"},"dependencies":{"@fontsource-variable/manrope":"^5.2.0","@radix-ui/react-dialog":"^1.1.6","@radix-ui/react-select":"^2.3.7","@radix-ui/react-tooltip":"^1.1.8","lucide-react":"^0.468.0","pinyin-pro":"^3.29.4","react":"^19.1.0","react-dom":"^19.1.0","react-markdown":"^10.1.0","remark-gfm":"^4.0.1"},"devDependencies":{"@playwright/test":"^1.51.0","vite":"^6.2.0"}}
+{
+  "name": "local-desk",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "vite build",
+    "test:ui": "node tests/browser.mjs",
+    "test:ui:core": "node tests/run-suite.mjs core",
+    "test:ui:all": "node tests/run-suite.mjs all"
+  },
+  "dependencies": {
+    "@fontsource-variable/manrope": "^5.2.0",
+    "@radix-ui/react-dialog": "^1.1.6",
+    "@radix-ui/react-select": "^2.3.7",
+    "@radix-ui/react-tooltip": "^1.1.8",
+    "lucide-react": "^0.468.0",
+    "pinyin-pro": "^3.29.4",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "react-markdown": "^10.1.0",
+    "remark-gfm": "^4.0.1"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.51.0",
+    "vite": "^6.2.0"
+  }
+}

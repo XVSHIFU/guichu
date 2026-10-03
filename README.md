@@ -15,7 +15,9 @@
 
 ## 启动
 
-需要 Windows、Python 3.12+、Node.js 20+。
+便携版：解压后双击「启动工作台.cmd」，无需另装 Python 或 Node。构建与完整迁移见 [便携版说明](docs/PORTABLE.md)。
+
+从源码启动需要 Windows、Python 3.12+、Node.js 20+。
 
 ```powershell
 cd app

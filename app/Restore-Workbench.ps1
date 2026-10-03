@@ -1,11 +1,11 @@
-param([Parameter(Mandatory=$true)][string]$BackupPath, [ValidateRange(1024,65535)][int]$Port = 8765)
+﻿param([Parameter(Mandatory=$true)][string]$BackupPath, [ValidateRange(1024,65535)][int]$Port = 8765)
 $ErrorActionPreference = 'Stop'
 $workbenchRoot = [IO.Path]::GetFullPath($PSScriptRoot)
 $serverPath = Join-Path $workbenchRoot 'server.py'
 $dataPath = Join-Path $workbenchRoot 'data'
 $recordPath = Join-Path $dataPath 'server-process.json'
 New-Item -ItemType Directory -Force -Path $dataPath | Out-Null
-$maintenanceLock = [IO.File]::Open((Join-Path $dataPath 'maintenance.lock'), 'OpenOrCreate', 'ReadWrite', 'None')
+$maintenanceLock = [IO.File]::Open((Join-Path $workbenchRoot 'maintenance.lock'), 'OpenOrCreate', 'ReadWrite', 'None')
 try {
     if (Test-Path -LiteralPath $recordPath) {
         $record = Get-Content -LiteralPath $recordPath -Raw | ConvertFrom-Json
@@ -17,7 +17,8 @@ try {
     if ($matching) { throw 'This workbench server is still running; stop it before restoring.' }
     try { $health = Invoke-RestMethod "http://127.0.0.1:$Port/api/health" -TimeoutSec 2 } catch { $health = $null }
     if ($health.app -eq 'local-desk') { throw 'A workbench service still responds on this port; confirm it is stopped.' }
-    $pythonPath = (Get-Command python -CommandType Application -ErrorAction Stop | Select-Object -First 1).Source
+    $pythonPath = Join-Path $workbenchRoot 'runtime/python.exe'
+    if (-not (Test-Path -LiteralPath $pythonPath)) { $pythonPath = (Get-Command python -CommandType Application -ErrorAction Stop | Select-Object -First 1).Source }
     $restoreCode = @'
 import os, sqlite3, sys, uuid
 from datetime import datetime
