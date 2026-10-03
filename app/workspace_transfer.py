@@ -119,7 +119,7 @@ def import_workspace(root, source):
                             if isinstance(value,list):return [rebase(v,key) for v in value]
                             if key in {'backup_path','backup_location'} and isinstance(value,str):
                                 try:
-                                    rel=Path(value).relative_to(Path(old)/'config-backups')
+                                    rel=Path(value).resolve().relative_to((Path(old)/'config-backups').resolve())
                                     return str(data/'config-backups'/rel)
                                 except ValueError:pass
                             return value

@@ -103,7 +103,19 @@ def _private_dacl():
         sid = ctypes.cast(buffer, ctypes.POINTER(ctypes.c_void_p))[0]
         if not api.ConvertSidToStringSidW(sid, ctypes.byref(text)):
             raise ctypes.WinError(ctypes.get_last_error())
-        return 'D:P(A;;FA;;;SY)(A;;FA;;;' + ctypes.wstring_at(text) + ')'
+        sddl = 'D:P(A;;FA;;;SY)(A;;FA;;;' + ctypes.wstring_at(text) + ')'
+        # Windows may serialize well-known account SIDs as aliases (for example LA).
+        # Round-trip the expected descriptor through the same Windows serializer.
+        descriptor, canonical = ctypes.c_void_p(), ctypes.c_void_p()
+        try:
+            if not api.ConvertStringSecurityDescriptorToSecurityDescriptorW(sddl, 1, ctypes.byref(descriptor), None):
+                raise ctypes.WinError(ctypes.get_last_error())
+            if not api.ConvertSecurityDescriptorToStringSecurityDescriptorW(descriptor, 1, 4, ctypes.byref(canonical), None):
+                raise ctypes.WinError(ctypes.get_last_error())
+            return ctypes.wstring_at(canonical)
+        finally:
+            _free(canonical)
+            _free(descriptor)
     finally:
         _free(text)
         kernel = ctypes.WinDLL('kernel32', use_last_error=True)

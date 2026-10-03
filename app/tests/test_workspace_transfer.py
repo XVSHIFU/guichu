@@ -25,7 +25,7 @@ class TransferTests(unittest.TestCase):
   with closing(sqlite3.connect(target/'data/workbench.sqlite3')) as db:
    self.assertEqual(db.execute('SELECT body FROM notes').fetchone()[0],'kept')
    record=json.loads(db.execute('SELECT payload FROM mcp_clients').fetchone()[0]);self.assertFalse(record['enabled']);self.assertEqual(record['credential'],'')
-   receipt=json.loads(db.execute('SELECT payload FROM mcp_actions').fetchone()[0]);self.assertEqual(receipt['receipt']['backup_path'],str(target/'data/config-backups/original.toml'))
+   receipt=json.loads(db.execute('SELECT payload FROM mcp_actions').fetchone()[0]);self.assertEqual(Path(receipt['receipt']['backup_path']).resolve(),(target/'data/config-backups/original.toml').resolve())
  def test_tampered_archive_does_not_touch_existing_data(self):
   export_workspace(self.source,self.archive)
   broken=self.root/'broken.zip'
