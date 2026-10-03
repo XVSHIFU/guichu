@@ -24,7 +24,11 @@
  ["cobalt", "钴蓝", "高对比的工作节奏", ["#f1f4fc", "#ffffff", "#202d4b", "#576580", "#d9e0f0", "#e5ebf8", "#264ec0", "#142449"], ["#141e35", "#1d2b47", "#e0e9ff", "#a9bce4", "#30466e", "#253859", "#8cb4ff", "#0c1529"]],
  ["burgundy", "酒红", "天鹅绒般的深红", ["#f7f0f1", "#fffbfa", "#482c32", "#78585f", "#e7d6da", "#efe2e5", "#8b354b", "#3c1e2a"], ["#29191f", "#38232c", "#f4dfe6", "#d0aab9", "#523440", "#422a34", "#e5a0b6", "#1f1118"]],
  ["midnight", "午夜", "深海蓝与月光", ["#eff3f9", "#fcfdff", "#23324d", "#566780", "#d7e0ed", "#e3eaf5", "#3e5792", "#101e39"], ["#0e1729", "#17233a", "#e0e9fa", "#a6badb", "#2c3e5c", "#20304a", "#a1baff", "#080f1e"]],
- ["aurora", "极光", "靛夜里的薄荷绿", ["#edf7f4", "#f8fffc", "#243b38", "#506d65", "#d2e6df", "#dff0e9", "#166c59", "#22213e"], ["#181a2e", "#22273c", "#e0f1e9", "#a9c6be", "#38485b", "#2b364c", "#83dcc0", "#101226"]]
+ ["aurora", "极光", "靛夜里的薄荷绿", ["#edf7f4", "#f8fffc", "#243b38", "#506d65", "#d2e6df", "#dff0e9", "#166c59", "#22213e"], ["#181a2e", "#22273c", "#e0f1e9", "#a9c6be", "#38485b", "#2b364c", "#83dcc0", "#101226"]],
+ ["catppuccin", "Catppuccin", "Latte / Mocha", ["#eff1f5", "#ffffff", "#4c4f69", "#5c5f77", "#ccd0da", "#e6e9ef", "#8536eb", "#181825"], ["#1e1e2e", "#313244", "#cdd6f4", "#a6adc8", "#45475a", "#313244", "#cba6f7", "#11111b"]],
+ ["rose-pine", "Rosé Pine", "Dawn / Main", ["#faf4ed", "#fffaf3", "#464261", "#696580", "#dfdad9", "#f2e9e1", "#286983", "#191724"], ["#191724", "#1f1d2e", "#e0def4", "#aaa6c1", "#403d52", "#26233a", "#ebbcba", "#16141f"]],
+ ["everforest", "Everforest", "森林与暖纸", ["#fdf6e3", "#fdf6e3", "#5c6a72", "#5c6a72", "#e6e2cc", "#f4f0d9", "#596b12", "#232a2e"], ["#2d353b", "#343f44", "#d3c6aa", "#a0aca3", "#475258", "#343f44", "#a7c080", "#232a2e"]],
+ ["tokyo-night", "Tokyo Night", "Day / Night", ["#e1e2e7", "#e1e2e7", "#2c4b96", "#4c5882", "#c1c9df", "#d0d5e3", "#2358b0", "#16161e"], ["#1a1b26", "#292e42", "#c0caf5", "#a9b1d6", "#394b70", "#292e42", "#7aa2f7", "#16161e"]]
  ];
  const keys=['bg','surface','ink','muted','line','soft','accent','nav'];
  const themes=rows.map(([id,name,note,light,dark])=>({id,name,note,light:Object.fromEntries(keys.map((k,i)=>[k,light[i]])),dark:Object.fromEntries(keys.map((k,i)=>[k,dark[i]]))}));
