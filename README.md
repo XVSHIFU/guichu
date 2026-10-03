@@ -13,6 +13,10 @@
 - 管理本机 stdio 和远程 Streamable HTTP MCP 连接。
 - 持久化会话、执行轨迹及长会话摘要，支持28 套深浅主题。
 
+## 下载
+
+[下载 Windows x64 便携版](https://github.com/XVSHIFU/guichu/releases/latest/download/guichu-release-windows-x64.zip) · [版本说明与校验文件](https://github.com/XVSHIFU/guichu/releases/latest)
+
 ## 启动
 
 便携版：解压后双击「启动工作台.cmd」，无需另装 Python 或 Node。构建与完整迁移见 [便携版说明](docs/PORTABLE.md)。
