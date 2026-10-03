@@ -23,12 +23,13 @@ jobs:
       - run: python scripts/verify_agent.py
       - run: python -m unittest discover -s app/tests -p "test_*.py"
       - run: npm --prefix app run build
-      - name: Start isolated workbench
-        shell: pwsh
-        run: ./app/Start-Workbench.ps1 -NoBrowser
-      - run: npm --prefix app run test:ui:core
-      - name: Stop workbench
-        if: always()
+      - name: Browser regression with isolated workbench
         shell: pwsh
         run: |
-          if (Test-Path app/data/server-process.json) { ./app/Stop-Workbench.ps1 }
+          ./app/Start-Workbench.ps1 -NoBrowser
+          try {
+            npm --prefix app run test:ui:core
+            if ($LASTEXITCODE -ne 0) { throw 'Browser regression failed.' }
+          } finally {
+            ./app/Stop-Workbench.ps1
+          }
