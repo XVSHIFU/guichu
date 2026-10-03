@@ -1,0 +1,4 @@
+psutil>=7,<8
+PyYAML>=6,<7
+mcp==2.3.0
+pywin32>=311,<312; sys_platform == "win32"

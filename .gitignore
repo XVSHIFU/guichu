@@ -1,0 +1,18 @@
+# Local inventory, credentials, backups and generated evidence
+/local-archive/
+/.impeccable/
+/test-results/
+**/data/
+**/test-results/
+**/playwright-report/
+**/node_modules/
+**/dist/
+**/__pycache__/
+*.py[cod]
+*.log
+.env
+.env.*
+!.env.example
+.venv/
+Thumbs.db
+.DS_Store

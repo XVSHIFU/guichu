@@ -1,0 +1,13 @@
+import {chromium} from '@playwright/test';
+import assert from 'node:assert/strict';
+import {softwareCategory,compareSoftware} from '../src/software.js';
+assert.equal(softwareCategory({kind:'software',name:'语雀 4.2.1'}),'办公与协作');
+assert.equal(softwareCategory({kind:'software',name:'崩坏：星穹铁道'}),'游戏与平台');
+assert.equal(softwareCategory({kind:'software',name:'Anaconda3 Python'}),'开发环境');
+assert.equal(softwareCategory({kind:'software',name:'Unknown App'}),'其他软件');
+const browser=await chromium.launch({executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe',headless:true});
+const page=await browser.newPage({viewport:{width:1004,height:884},reducedMotion:'reduce'});const errors=[];page.on('pageerror',e=>errors.push(e.message));
+await page.goto('http://127.0.0.1:8765');await page.locator('.nav-item').filter({hasText:'软件与 Agent'}).click();await page.getByRole('button',{name:'软件',exact:true}).click();await page.locator('.object-row').first().waitFor();
+const names=await page.locator('.object-row strong').allTextContents();const expected=names.map((name,i)=>({name,id:String(i)})).sort(compareSoftware).map(o=>o.name);assert.deepEqual(names,expected);
+await page.getByRole('combobox',{name:'软件分类'}).click();await page.getByRole('option',{name:'办公与协作',exact:true}).click();await page.getByRole('textbox',{name:'搜索当前列表'}).fill('语雀');const yuque=page.locator('.object-row').first();await yuque.waitFor();assert.equal(await yuque.locator('img').count(),1);await page.waitForFunction(()=>document.querySelector('.object-row img')?.naturalWidth>0);await yuque.click();await page.locator('.object-preview').click();await page.getByRole('dialog').waitFor();await page.getByRole('button',{name:'关闭详情'}).click();await page.getByRole('textbox',{name:'搜索当前列表'}).fill('');await page.screenshot({path:'test-results/software-desktop.png',fullPage:true});
+await page.getByRole('combobox',{name:'软件分类'}).click();await page.getByRole('option',{name:'游戏与平台',exact:true}).click();assert((await page.locator('.object-row').count())>0);await page.setViewportSize({width:390,height:844});await page.screenshot({path:'test-results/software-mobile.png',fullPage:true});assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));assert.deepEqual(errors,[]);await browser.close();console.log('PASS A-Z/pinyin, office/game/environment classification, local Yuque icon, filters and mobile');

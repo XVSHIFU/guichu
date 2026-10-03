@@ -1,0 +1,13 @@
+.settings-workspace{display:grid;grid-template-columns:176px minmax(0,1fr);gap:32px;padding-top:28px;align-items:start}
+.settings-nav{display:flex;flex-direction:column;gap:6px;position:sticky;top:24px}
+.settings-nav button{display:flex;gap:12px;align-items:center;text-align:left;padding:14px 12px;border-radius:7px;color:var(--muted);min-height:62px}
+.settings-nav button strong{display:block;font-size:13px;font-weight:600;color:var(--ink)}
+.settings-nav button small{display:block;font-size:11px;margin-top:5px;line-height:1.5}
+.settings-nav button[aria-selected=true]{background:var(--soft);color:var(--accent);box-shadow:inset 3px 0 var(--accent)}
+.settings-nav button:hover{background:var(--soft)}
+.settings-panels{min-width:0;border-left:1px solid var(--line);padding-left:32px}
+.settings-panels>[hidden]{display:none!important}
+.settings-panels .settings-section{padding-top:0;border-bottom:0;margin-top:0}
+.settings-panels .setting-row{gap:20px}
+@media(max-width:1150px){.settings-workspace{grid-template-columns:150px minmax(0,1fr);gap:22px}.settings-panels{padding-left:22px}.settings-panels .model-settings .setting-row{grid-template-columns:minmax(0,1fr);display:grid;gap:10px}.settings-panels .model-settings .setting-row input{width:100%;max-width:none}}
+@media(max-width:760px){.settings-workspace{display:block;padding-top:18px}.settings-nav{position:static;flex-direction:row;overflow-x:auto;border-bottom:1px solid var(--line);gap:4px;padding-bottom:12px;margin-bottom:24px}.settings-nav button{flex-shrink:0;min-height:44px;padding:12px;gap:8px}.settings-nav button small{display:none}.settings-nav button[aria-selected=true]{box-shadow:inset 0 -2px var(--accent)}.settings-panels{border-left:0;padding-left:0}}

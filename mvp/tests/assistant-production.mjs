@@ -1,0 +1,21 @@
+import {chromium,expect} from '@playwright/test';
+import assert from 'node:assert/strict';
+const browser=await chromium.launch({executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe',headless:true});
+try{
+ const page=await browser.newPage({viewport:{width:1304,height:884},reducedMotion:'reduce'}),calls=[],errors=[];let configured=false;
+ page.on('pageerror',e=>errors.push(e.message));
+ let session={id:'legacy',title:'历史请求',mode:'demo',draft:'',target:null,messages:[{id:'u',role:'user',text:'此前的请求'},{id:'a',role:'assistant',text:'模拟成功已修改文件'}],plan:{id:'old',name:'模拟提案'},accepted:true};
+ await page.addInitScript(()=>localStorage.setItem('desk-assistant-session','legacy'));
+ await page.route('**/api/**',async route=>{const r=route.request(),path=new URL(r.url()).pathname;if(r.method()!=='POST')return route.continue();const b=r.postDataJSON();calls.push(path);let result;
+ if(path==='/api/model/settings')result={config:configured?{endpoint:'https://mock.invalid',model:'mock-model'}:{endpoint:'',model:''}};
+ else if(path==='/api/model/catalog')result={providers:[],active_id:null};
+ else if(path==='/api/assistant/list')result={sessions:[session]};
+ else if(path==='/api/assistant/get')result={session};
+ else if(path==='/api/assistant/actions')result={actions:[]};
+ else if(path==='/api/assistant/update'){session={...session,draft:b.draft};result={session}}
+ else if(path==='/api/run/start'){session={...session,mode:'readonly',draft:'',active_run_id:'real-run',messages:[...session.messages,{id:'u2',role:'user',text:b.text}]};result={run:{id:'real-run',session_id:session.id,status:'running',answer:''}}}
+ else if(path==='/api/run/get'){session={...session,active_run_id:null,messages:[...session.messages.filter(m=>m.id!=='a2'),{id:'a2',role:'assistant',mode:'readonly',run_id:'real-run',text:'这是模型分析结果。'}]};result={run:{id:'real-run',session_id:session.id,status:'succeeded',answer:'这是模型分析结果。',usage:{total_tokens:20}},events:[]}}
+ else return route.fulfill({status:400,json:{error:'未预期的请求 '+path}});return route.fulfill({json:result})});
+ await page.goto('http://127.0.0.1:8765');await page.getByRole('button',{name:'归处助手',exact:true}).click();await expect(page.getByText('此前的请求',{exact:true})).toBeVisible();await expect(page.getByText('模拟成功已修改文件',{exact:true})).toHaveCount(0);await expect(page.getByText('早期记录（未执行） · 1',{exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'体验确认流程'})).toHaveCount(0);await expect(page.getByRole('group',{name:'处理方式'})).toHaveCount(0);
+ await page.getByRole('button',{name:'设置模型连接',exact:true}).click();await expect(page.getByRole('heading',{name:'模型提供商',exact:true})).toBeVisible();configured=true;await page.getByRole('button',{name:'归处助手',exact:true}).click();await expect(page.getByRole('button',{name:'设置模型连接',exact:true})).toHaveCount(0,{timeout:5000});await page.getByLabel('给助手的请求').fill('请分析本机清单');await expect(page.getByRole('button',{name:'发送请求',exact:true})).toBeEnabled();await page.getByRole('button',{name:'发送请求',exact:true}).click();await expect(page.getByText('这是模型分析结果。',{exact:true})).toBeVisible();await expect(page.getByRole('region',{name:'只读运行状态'}).getByText('分析完成',{exact:true})).toBeVisible();assert(calls.includes('/api/run/start'));assert(!calls.includes('/api/assistant/send'));assert(!calls.includes('/api/assistant/confirm'));assert.deepEqual(errors,[]);await page.screenshot({path:'test-results/assistant-production.png'});await page.setViewportSize({width:390,height:844});await page.screenshot({path:'test-results/assistant-production-mobile.png',fullPage:true});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);console.log('PASS real-only send, no demo endpoints, legacy replies hidden, missing configuration navigation and returning after configuration');
+}finally{await browser.close()}
