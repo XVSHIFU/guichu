@@ -13,9 +13,9 @@ class FileActionsTests(unittest.TestCase):
             path=Path(tmp)/'file with spaces.txt';path.write_text('test')
             with patch.object(file_actions.psutil,'disk_partitions',return_value=[SimpleNamespace(mountpoint=path.anchor)]),patch.object(file_actions.os,'startfile',create=True) as opened,patch.object(file_actions.subprocess,'Popen') as reveal:
                 self.assertEqual(file_actions.dispatch({'action':'open','path':str(path)})[1],200)
-                opened.assert_called_once_with(str(path))
+                opened.assert_called_once_with(str(path.resolve()))
                 self.assertEqual(file_actions.dispatch({'action':'reveal','path':str(path)})[1],200)
-                self.assertEqual(reveal.call_args.args[0][-1],str(path))
+                self.assertEqual(reveal.call_args.args[0][-1],str(path.resolve()))
 
     def test_executable_and_missing_file_are_not_launched(self):
         with tempfile.TemporaryDirectory() as tmp:

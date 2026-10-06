@@ -44,7 +44,7 @@ def main():
         shutil.copy2(source, output/source.name)
     shutil.copytree(ROOT/'docs',output/'docs')
     shutil.copy2(ROOT/'app/README.md',app/'README.md')
-    for name in ('README.md',):
+    for name in ('README.md','CHANGELOG.md'):
         shutil.copy2(ROOT/name, output/name)
     subprocess.run([str(runtime/'python.exe'), '-c', 'import server, mcp, psutil, yaml, win32crypt; print("Portable imports OK")'], cwd=app, check=True)
     manifest = {'python': VERSION, 'python_source': url, 'python_archive_sha256': hashlib.sha256(cache.read_bytes()).hexdigest(), 'files': {str(p.relative_to(output)).replace('\\','/'): hashlib.sha256(p.read_bytes()).hexdigest() for p in output.rglob('*') if p.is_file() and '__pycache__' not in p.parts}}

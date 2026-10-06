@@ -6,7 +6,7 @@
 
 [下载 Windows x64 便携版](https://github.com/XVSHIFU/guichu/releases/latest) · [更新日志](CHANGELOG.md) · [使用说明](app/README.md)
 
-> 本页展示当前源码版本。已发布便携包的功能以对应 Release 说明为准，本次源码更新不代表便携包同步发布。
+> 本页功能对应 v0.2.0 源码与 Windows x64 便携版。下载时请核对对应 Release 的版本说明。
 
 ![归处工作台](docs/images/workbench.jpg)
 
