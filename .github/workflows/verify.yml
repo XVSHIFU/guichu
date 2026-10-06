@@ -28,6 +28,15 @@ jobs:
         run: |
           ./app/Start-Workbench.ps1 -NoBrowser
           try {
+            # First boot discovers the runner's environment asynchronously.
+            # UI suites need the initial snapshot, not just an HTTP listener.
+            $scanDeadline = (Get-Date).AddMinutes(4)
+            do {
+              $workbenchHealth = Invoke-RestMethod 'http://127.0.0.1:8765/api/health'
+              if (-not $workbenchHealth.busy) { break }
+              if ((Get-Date) -ge $scanDeadline) { throw 'Initial inventory scan did not finish.' }
+              Start-Sleep -Seconds 2
+            } while ($true)
             npm --prefix app run test:ui:core
             if ($LASTEXITCODE -ne 0) { throw 'Browser regression failed.' }
           } finally {
