@@ -80,7 +80,7 @@ def collect_registered(sources):
                 raise ValueError('来源类型无效')
             label = source.get('label')
             name = label[:200] if isinstance(label, str) and label else root.name or str(root)
-            source_name = '登记的便携目录' if kind == 'portable' else '登记的项目配置'
+            source_name = ('自动发现的安装目录' if str(source.get('id', '')).startswith('auto-') else '登记的便携目录') if kind == 'portable' else '登记的项目配置'
             directory_id = add('directory', os.path.normcase(str(root)), name, path=str(root),
                                source=source_name, scope=kind, status='目录已登记')
             if kind == 'portable':

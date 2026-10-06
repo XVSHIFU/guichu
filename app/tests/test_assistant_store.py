@@ -12,6 +12,16 @@ from assistant_store import dispatch, initialize
 
 
 class AssistantStoreTests(unittest.TestCase):
+    def test_multiple_targets_deduplicate_persist_and_validate(self):
+        payload,status=self.call('create',target_ids=['a','b','a'])
+        self.assertEqual(status,200)
+        sid=payload['session']['id']
+        self.assertEqual([o['id'] for o in payload['session']['targets']],['a','b'])
+        self.assertEqual(self.call('update',id=sid,target_ids=['a','missing'])[1],400)
+        self.assertEqual(len(self.call('get',id=sid)[0]['session']['targets']),2)
+        self.assertEqual(self.call('update',id=sid,target_ids=['a']*21)[1],400)
+        self.assertEqual(self.call('update',id=sid,target_ids=[])[0]['session']['target'],None)
+
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.path = Path(self.temp.name) / 'test.sqlite'

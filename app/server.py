@@ -20,6 +20,7 @@ from urllib.parse import urlparse, unquote
 import psutil
 import yaml
 from local_icons import enrich_icons, CACHE
+import file_actions
 import assistant_store
 import assistant_runtime
 import action_store
@@ -31,6 +32,13 @@ import source_registry
 import action_origin
 import cleanup_store
 from registered_sources import collect_registered
+from package_inventory import collect_packages
+from software_locations import automatic_sources, enrich_locations
+import software_origin
+import system_components
+from windows_apps import collect_windows_apps
+from manager_inventory import collect_managers
+from tool_identity import enrich as enrich_tool_identity
 import assistant_tools
 import agent_preferences
 import mcp_client_store
@@ -87,7 +95,9 @@ def initialize():
         c.executescript('''CREATE TABLE IF NOT EXISTS scans(id INTEGER PRIMARY KEY, at TEXT, payload TEXT);
         CREATE TABLE IF NOT EXISTS notes(id TEXT PRIMARY KEY, decision TEXT, body TEXT, updated TEXT);
         CREATE TABLE IF NOT EXISTS changes(id INTEGER PRIMARY KEY, at TEXT, object_id TEXT, name TEXT, kind TEXT, event TEXT);
-        CREATE TABLE IF NOT EXISTS categories(object_id TEXT PRIMARY KEY,value TEXT NOT NULL,updated TEXT NOT NULL);''')
+        CREATE TABLE IF NOT EXISTS tool_identities(object_id TEXT PRIMARY KEY,value TEXT NOT NULL,updated TEXT NOT NULL);
+        CREATE TABLE IF NOT EXISTS categories(object_id TEXT PRIMARY KEY,value TEXT NOT NULL,updated TEXT NOT NULL);
+        CREATE TABLE IF NOT EXISTS software_origins(object_id TEXT PRIMARY KEY,value TEXT NOT NULL,updated TEXT NOT NULL);''')
     assistant_store.initialize(connection)
     mcp_client_store.initialize(connection)
     agent_preferences.initialize(connection)
@@ -108,20 +118,39 @@ def latest():
         data=json.loads(row[0]) if row else None
         notes={r['id']:dict(r) for r in c.execute('SELECT * FROM notes')}
         changes=[dict(r) for r in c.execute('SELECT * FROM changes ORDER BY id DESC LIMIT 100')]
+        identities={r['object_id']:r['value'] for r in c.execute('SELECT * FROM tool_identities')}
         categories={r['object_id']:r['value'] for r in c.execute('SELECT * FROM categories')}
+        origins={r['object_id']:json.loads(r['value']) for r in c.execute('SELECT * FROM software_origins')}
     if data:
         data['notes']=notes;data['changes']=changes
         for obj in data.get('objects',[]):
+            software_origin.enrich(obj,origins.get(obj['id']))
+            system_components.enrich(obj)
             if obj['id'] in categories:obj['manualCategory']=categories[obj['id']]
+            if obj['id'] in identities:
+                obj['manualIdentity']=identities[obj['id']]
+                obj['capabilities']=['software','agent'] if identities[obj['id']]=='agent' else ['software']
+                obj['agentIdentity']='user_defined'
+                obj['identityEvidence']='用户手动标记；不表示已验证运行状态或工具能力。'
     return relation_store.overlay(data,connection) if data else data
 
 def scan_collect():
     data=collect()
-    registered=collect_registered(source_registry.list_sources(connection))
-    enrich_icons(registered.get('objects',[]))
+    registrations=source_registry.list_sources(connection)
+    registrations += list(automatic_sources(data.get('disks',[])))
+    registered=collect_registered([s for s in registrations if s['type'] in ('portable','project')])
+    packages=collect_packages(registrations)
+    windows_apps=collect_windows_apps(data['at'])
+    managers=collect_managers()
+    for key in ['objects','relations','issues','sources']:
+        packages.setdefault(key,[]).extend(managers.get(key,[]))
+    for key in ['objects','relations','issues','sources']:
+        packages.setdefault(key,[]).extend(windows_apps.get(key,[]))
+    for key in ['objects','relations','issues','sources']:
+        registered.setdefault(key,[]).extend(packages.get(key,[]))
     for key in ['objects','relations','issues','sources']:
         data.setdefault(key,[]).extend(registered.get(key,[]))
-    data['scope']='Windows 用户配置、软件注册表及手动登记目录；项目来源只检查约定文件，不含 WSL 或云端插件。'
+    data['scope']='Windows 注册表、常见安装与数据目录、登记目录及 PATH / 当前 Python 环境中的命令包；限量检查，不含全部自定义位置、WSL 或云端插件。'
     with connection() as c:
         previous=c.execute('SELECT payload FROM scans ORDER BY id DESC LIMIT 1').fetchone()
         if previous:
@@ -140,6 +169,10 @@ def scan_collect():
                     if any(old[oid].get(k)!=new[oid].get(k) for k in fields):event='配置变化'
                 if event:
                     o=new.get(oid,old.get(oid));c.execute('INSERT INTO changes(at,object_id,name,kind,event) VALUES (?,?,?,?,?)',(data['at'],oid,o['name'],o['kind'],event))
+        enrich_locations(data)
+        enrich_tool_identity(data)
+        try:enrich_icons(data['objects'])
+        except Exception:data['issues'].append({'sourceKey':'icons','name':'软件图标','reason':'图标读取失败'})
         c.execute('INSERT INTO scans(at,payload) VALUES (?,?)',(data['at'],json.dumps(data,ensure_ascii=False)))
         c.execute('DELETE FROM scans WHERE id NOT IN (SELECT id FROM scans ORDER BY id DESC LIMIT 20)')
     return data
@@ -194,11 +227,15 @@ class Handler(BaseHTTPRequestHandler):
         if not self.valid_host() or origin not in allowed or self.headers.get('X-Desk-Token')!=TOKEN:return self.json_response({'error':'操作来源校验失败'},403)
         try:
             size=int(self.headers.get('Content-Length','0'))
-            if not 0<=size<=16000:raise ValueError()
+            limit=65536 if urlparse(self.path).path=='/api/agent/preferences' else 16000
+            if not 0<=size<=limit:raise ValueError()
             body=json.loads(self.rfile.read(size) or b'{}')
             if not isinstance(body,dict):raise ValueError()
         except (ValueError,TypeError):return self.json_response({'error':'无效请求'},400)
         route=urlparse(self.path).path
+        if route=='/api/file-action':
+            result,status=file_actions.dispatch(body)
+            return self.json_response(result,status)
         if route=='/api/shutdown':
             with REQUEST_LOCK:
                 reasons=busy_reasons()
@@ -293,7 +330,7 @@ class Handler(BaseHTTPRequestHandler):
         if route.startswith('/api/assistant/'):
             try:
                 with assistant_runtime.LOCK:
-                    if route.rsplit('/',1)[-1] in ['delete','send'] or (route.endswith('/update') and 'target_id' in body):
+                    if route.rsplit('/',1)[-1] in ['delete','send'] or (route.endswith('/update') and ('target_id' in body or 'target_ids' in body)):
                         with connection() as db:
                             records=db.execute('SELECT payload FROM assistant_runs WHERE session_id=?',(body.get('id',''),)).fetchall()
                         if any(json.loads(r[0])['status'] not in assistant_runtime.TERMINAL for r in records):return self.json_response({'error':'此会话仍在运行，请先停止任务'},409)
@@ -308,6 +345,20 @@ class Handler(BaseHTTPRequestHandler):
         data=latest()
         obj=next((o for o in (data or {}).get('objects',[]) if o['id']==body.get('id')),None)
         if not obj:return self.json_response({'error':'对象不存在，请刷新清单'},404)
+        if route=='/api/software-origin':
+            value=body.get('value')
+            if obj['kind'] not in ('software','agent') or not software_origin.valid_override(value):return self.json_response({'error':'来源分类无效'},400)
+            with connection() as c:
+                if not value:c.execute('DELETE FROM software_origins WHERE object_id=?',(obj['id'],))
+                else:c.execute('INSERT INTO software_origins VALUES (?,?,?) ON CONFLICT(object_id) DO UPDATE SET value=excluded.value,updated=excluded.updated',(obj['id'],json.dumps(value),now()))
+            return self.json_response({'ok':True})
+        if route=='/api/tool-identity':
+            value=body.get('value')
+            if obj['kind'] not in ('agent','software') or value not in ('agent','software',None):return self.json_response({'error':'身份标记无效'},400)
+            with connection() as c:
+                if value is None:c.execute('DELETE FROM tool_identities WHERE object_id=?',(obj['id'],))
+                else:c.execute('INSERT INTO tool_identities VALUES (?,?,?) ON CONFLICT(object_id) DO UPDATE SET value=excluded.value,updated=excluded.updated',(obj['id'],value,now()))
+            return self.json_response({'ok':True})
         if route=='/api/category':
             value=body.get('value')
             if obj['kind']!='software' or (value is not None and (not isinstance(value,str) or value not in CATEGORIES)):return self.json_response({'error':'分类无效或对象不是软件'},400)

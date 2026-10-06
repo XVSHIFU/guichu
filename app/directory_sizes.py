@@ -6,17 +6,21 @@ is an observation during the scan, not a filesystem snapshot. No links followed.
 """
 from datetime import datetime, timezone
 import json
+import heapq
 import os
 from pathlib import Path
 import stat
 import threading
 import time
 import uuid
+from collections import deque
 
 import psutil
 
 MAX_SECONDS = 120
 MAX_ENTRIES = 200000
+EXTENDED_SECONDS = 1800
+EXTENDED_ENTRIES = 5000000
 PROGRESS_INTERVAL = 0.5
 ACTIVE = {}
 LOCK = threading.RLock()
@@ -78,13 +82,38 @@ def _validate(raw):
 
 def _worker(connection, task, cancel):
     last_update = 0.0
-    deadline = time.monotonic() + MAX_SECONDS
-    stack = [Path(task['path'])]
+    extended = task.get('scan_mode') == 'extended'
+    deadline = time.monotonic() + (EXTENDED_SECONDS if extended else MAX_SECONDS)
+    entry_limit = EXTENDED_ENTRIES if extended else MAX_ENTRIES
+    task['issue_counts'] = {}
+    task['issue_samples'] = []
+    stack = deque([Path(task['path'])])
     seen = set()
+    root = Path(task['path'])
+    nodes = {str(root): {'path': str(root), 'parent': None, 'name': root.name or str(root), 'bytes': 0, 'files': 0, 'errors': 0}}
+    largest = []
+    enumerated = set()
+    def issue(kind, path, error=None):
+        task['issue_counts'][kind] = task['issue_counts'].get(kind, 0) + 1
+        if len(task['issue_samples']) < 100:
+            task['issue_samples'].append({'kind': kind, 'path': str(path),
+                                         'code': getattr(error, 'winerror', None) or getattr(error, 'errno', None)})
+    def read_error(path, error):
+        kind = ('permission' if isinstance(error, PermissionError) else
+                'disappeared' if isinstance(error, FileNotFoundError) else 'io')
+        issue(kind, path, error)
+    def accumulate(directory, field, amount):
+        while True:
+            node = nodes.get(str(directory))
+            if node is not None: node[field] += amount
+            if directory == root or directory.parent == directory: break
+            directory = directory.parent
     def progress(force=False):
         nonlocal last_update
         current = time.monotonic()
         if force or current - last_update >= PROGRESS_INTERVAL:
+            task['tree'] = list(nodes.values())
+            task['largest_files'] = [{'bytes': size, 'path': path, 'name': Path(path).name, 'parent': str(Path(path).parent)} for size, path in sorted(largest, reverse=True)]
             _persist(connection, task)
             last_update = current
     def stopped():
@@ -99,13 +128,14 @@ def _worker(connection, task, cancel):
         task['status'] = 'running'
         progress(True)
         while stack and not stopped():
-            directory = stack.pop()
+            directory = stack.popleft()
             try:
                 # Recheck queued directory components; never deliberately traverse
                 # a link introduced after enumeration. A mutable filesystem is
                 # still not an atomic snapshot.
                 if any(_linked(part) for part in (directory, *directory.parents)):
                     task['skipped'] += 1
+                    issue('link', directory)
                     progress()
                     continue
                 with os.scandir(directory) as entries:
@@ -113,14 +143,19 @@ def _worker(connection, task, cancel):
                     for entry in entries:
                         if stopped():
                             break
-                        if task['entries'] >= MAX_ENTRIES:
+                        if task['entries'] >= entry_limit:
                             task['limit'] = 'entries'
                             break
                         task['entries'] += 1
                         try:
                             if entry.is_symlink() or Path(entry.path).is_junction():
                                 task['skipped'] += 1
+                                issue('link', entry.path)
                             elif entry.is_dir(follow_symlinks=False):
+                                if len(nodes) < 5000:
+                                    nodes[entry.path] = {'path': entry.path, 'parent': str(directory), 'name': entry.name, 'bytes': 0, 'files': 0, 'errors': 0}
+                                else:
+                                    task['tree_truncated'] = True
                                 stack.append(Path(entry.path))
                             else:
                                 # Windows DirEntry.stat may leave st_ino/st_dev
@@ -128,6 +163,7 @@ def _worker(connection, task, cancel):
                                 metadata = os.stat(entry.path, follow_symlinks=False)
                                 if not stat.S_ISREG(metadata.st_mode):
                                     task['skipped'] += 1
+                                    issue('special', entry.path)
                                 else:
                                     # A zero inode is not a reliable deduplication
                                     # identity; use the distinct entry path instead.
@@ -138,13 +174,23 @@ def _worker(connection, task, cancel):
                                         seen.add(identity)
                                         task['files'] += 1
                                         task['bytes'] += metadata.st_size
-                        except OSError:
+                                        accumulate(directory, 'bytes', metadata.st_size)
+                                        accumulate(directory, 'files', 1)
+                                        item = (metadata.st_size, entry.path)
+                                        if len(largest) < 200: heapq.heappush(largest, item)
+                                        elif item > largest[0]: heapq.heapreplace(largest, item)
+                        except OSError as error:
                             task['errors'] += 1
+                            read_error(entry.path, error)
+                            accumulate(directory, 'errors', 1)
                         progress()
                     if cancel.is_set() or task['limit']:
                         break
-            except OSError:
+                    enumerated.add(str(directory))
+            except OSError as error:
                 task['errors'] += 1
+                read_error(directory, error)
+                accumulate(directory, 'errors', 1)
                 progress()
         task['status'] = ('cancelled' if cancel.is_set() else
                           'partial' if task['errors'] or task['skipped'] or task['limit'] else 'succeeded')
@@ -152,6 +198,18 @@ def _worker(connection, task, cancel):
         task.update(status='cancelled' if cancel.is_set() else 'failed', error='统计未完成，请重新尝试')
     finally:
         try:
+            # Completion is per subtree, not inferred from a zero byte count.
+            incomplete = set()
+            for path, node in nodes.items():
+                if path not in enumerated or node['errors']:
+                    parent = Path(path)
+                    while True:
+                        incomplete.add(str(parent))
+                        if parent == root or parent.parent == parent: break
+                        parent = parent.parent
+            for path, node in nodes.items():
+                node['enumerated'] = path in enumerated
+                node['complete'] = path not in incomplete and not task.get('tree_truncated')
             progress(True)
         finally:
             with LOCK:
@@ -167,7 +225,8 @@ def dispatch(connection, route, body):
     if action == 'list':
         with connection() as db:
             tasks = [json.loads(row[0]) for row in db.execute('SELECT payload FROM directory_size_tasks')]
-        return {'tasks': sorted(tasks, key=lambda item: item['created_at'], reverse=True)[:100]}, 200
+        return {'tasks': [{k:v for k,v in task.items() if k not in ('tree','largest_files')}
+                          for task in sorted(tasks, key=lambda item: item['created_at'], reverse=True)[:100]]}, 200
     if action in {'get', 'cancel'}:
         rid = body.get('id')
         if not isinstance(rid, str):
@@ -187,6 +246,12 @@ def dispatch(connection, route, body):
                     db.execute('UPDATE directory_size_tasks SET payload=? WHERE id=?', (json.dumps(task, ensure_ascii=False), rid))
             return {'task': task}, 200
     request_id, raw = body.get('request_id'), body.get('path')
+    scan_mode = body.get('scan_mode', 'standard')
+    elevated = body.get('elevated', False)
+    if not isinstance(elevated, bool) or (elevated and os.name != 'nt'):
+        return {'error': '管理员统计仅支持 Windows'}, 400
+    if scan_mode not in ('standard', 'extended'):
+        return {'error': '无效的统计模式'}, 400
     if not isinstance(request_id, str) or not request_id.strip() or len(request_id) > 128:
         return {'error': '请求标识无效'}, 400
     if not isinstance(raw, str) or not raw or len(raw) > 4096:
@@ -197,7 +262,7 @@ def dispatch(connection, route, body):
             prior = db.execute('SELECT payload FROM directory_size_tasks WHERE request_id=?', (request_id,)).fetchone()
             if prior:
                 task = json.loads(prior[0])
-                if task['requested_path'] != requested_path:
+                if task['requested_path'] != requested_path or task.get('scan_mode', 'standard') != scan_mode or task.get('elevated', False) != elevated:
                     return {'error': '请求标识已用于其他目录'}, 409
                 return {'task': task}, 200
         if ACTIVE:
@@ -208,6 +273,8 @@ def dispatch(connection, route, body):
             return {'error': '目录不可用；请选择本机磁盘中的普通目录，不支持链接或网络目录'}, 400
         stamp = _now()
         task = {'id': uuid.uuid4().hex, 'request_id': request_id, 'requested_path': requested_path,
+                'scan_mode': scan_mode,
+                'elevated': elevated,
                 'path': str(path), 'status': 'queued', 'bytes': 0, 'files': 0, 'directories': 0,
                 'errors': 0, 'skipped': 0, 'entries': 0, 'hardlinks': 0, 'limit': None, 'error': None,
                 'cancel_requested': False, 'created_at': stamp, 'updated_at': stamp}
@@ -216,5 +283,9 @@ def dispatch(connection, route, body):
                        (task['id'], request_id, json.dumps(task, ensure_ascii=False)))
         cancel = threading.Event()
         ACTIVE[task['id']] = cancel
-        threading.Thread(target=_worker, args=(connection, dict(task), cancel), daemon=True).start()
+        worker = _worker
+        if elevated:
+            from elevated_size import launch
+            worker = launch
+        threading.Thread(target=worker, args=(connection, dict(task), cancel), daemon=True).start()
         return {'task': task}, 202

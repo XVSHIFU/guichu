@@ -5,7 +5,7 @@ from pathlib import Path
 import uuid
 from datetime import datetime, timezone
 
-TYPES = {'portable', 'project'}
+TYPES = {'portable', 'project', 'npm', 'pip'}
 MAX_SOURCES = 20
 
 

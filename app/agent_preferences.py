@@ -18,8 +18,8 @@ def dispatch(connection, body):
         return {'error': '偏好参数无效'}, 400
     if 'instructions' in body:
         value = body['instructions']
-        if not isinstance(value, str) or len(value) > 2000:
-            return {'error': '使用偏好最多 2000 字'}, 400
+        if not isinstance(value, str) or len(value) > 8000:
+            return {'error': '使用偏好最多 8000 字'}, 400
         with connection() as db:
             db.execute('INSERT INTO agent_preferences VALUES (1,?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload',
                        (json.dumps({'instructions': value.strip()}, ensure_ascii=False),))

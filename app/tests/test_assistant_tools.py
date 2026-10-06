@@ -60,8 +60,11 @@ class AssistantToolsTests(unittest.TestCase):
             self.objects.append({'id': 'd', 'name': 'Temp', 'kind': 'directory', 'path': str(path)})
             with patch.object(Path, 'read_text', side_effect=AssertionError('no content reads')):
                 result = self.call('list_directory', {'object_id': 'd'}, allowed=['d'])
-            self.assertEqual(len(result['entries']), 100)
+            self.assertEqual(len(result['entries']), 20)
+            self.assertIsNotNone(result['next_cursor'])
             self.assertTrue(result['truncated'])
+            self.assertIn('observed_at', result)
+            self.assertIn('本次实时', result['basis'])
             self.assertNotIn('SECRET', json.dumps(result))
             self.assertNotIn(str(path), json.dumps(result))
             with patch.object(Path, 'is_junction', return_value=True):

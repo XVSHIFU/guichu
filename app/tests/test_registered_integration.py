@@ -15,7 +15,7 @@ class RegisteredIntegrationTests(unittest.TestCase):
             root=Path(directory);project=root/'project';project.mkdir()
             config=project/'.mcp.json'
             config.write_text(json.dumps({'mcpServers':{'fixture':{'command':'node','env':{'TOKEN':'secret-fixture-value'}}}}),encoding='utf-8')
-            with patch.object(server,'DB',root/'test.db'),patch.object(server,'enrich_icons'),patch.object(server,'collect',side_effect=lambda:{'objects':[],'relations':[],'sources':[],'issues':[],'at':server.now()}):
+            with patch.object(server,'DB',root/'test.db'),patch.object(server,'enrich_icons'),patch.object(server,'automatic_sources',return_value=[]),patch.object(server,'collect_packages',return_value={}),patch.object(server,'collect_windows_apps',return_value={}),patch.object(server,'collect_managers',return_value={}),patch.object(server,'collect',side_effect=lambda:{'objects':[],'relations':[],'sources':[],'issues':[],'at':server.now()}):
                 server.initialize()
                 result,status=source_registry.dispatch(server.connection,'/api/source/add',{'type':'project','path':str(project),'label':'Fixture'})
                 self.assertEqual(status,200)

@@ -9,7 +9,7 @@ def schema(name,description,fields):
 STRING={'type':'string'}
 EXTRA=[schema('load_skill','读取已启用内置技能正文，不能传文件路径',{'skill_id':{'type':'string','enum':list(context.SKILLS)}}),
        schema('inspect_config','实时检查 Codex MCP enabled 或 Claude 用户 MCP 注册状态，只返回脱敏字段',{'object_id':STRING}),
-       schema('measure_directory','按需统计已授权目录，最多15秒；未完成结果不等于完整大小',{'object_id':STRING}),
+       schema('measure_directory','递归统计已授权目录的字节数、文件数和目录数（含根目录），最多15秒；未完成结果不等于完整大小',{'object_id':STRING}),
        schema('get_action_capabilities','查询对象实际支持的提案动作',{'object_id':STRING}),
        schema('propose_change','创建需用户卡片确认的提案，不执行修改。parameters中不用的字段填null。',{'object_id':STRING,'action':{'type':'string','enum':['retention','mcp_enabled','claude_mcp_remove','batch_category']},'parameters':{'type':'object','properties':{'decision':{'type':['string','null'],'enum':['未标记','保留','待确认',None]},'enabled':{'type':['boolean','null']},'changes':{'type':['array','null'],'items':{'type':'object','properties':{'object_id':STRING,'category':{'type':['string','null']}},'required':['object_id','category'],'additionalProperties':False}}},'required':['decision','enabled','changes'],'additionalProperties':False}}),
        schema('get_action_status','查询本会话提案执行状态',{'proposal_id':STRING}),
@@ -57,7 +57,9 @@ class Registry:
                     return {'task_id':task['id'],'partial':True,'observed_bytes':task['bytes'],'error':{'code':'budget','message':'统计达到本次时间预算，已请求停止；已观察大小不代表完整目录'}}
                 self.cancel.wait(.05)
                 task=directory_sizes.dispatch(self.connection,'/api/size/get',{'id':task['id']})[0]['task']
-            return {'task_id':task['id'],'status':task['status'],'bytes':task['bytes'],'files':task['files'],'directories':task['directories'],'errors':task['errors'],'partial':task['status']!='succeeded','checked_at':task['updated_at']}
+            return {'task_id':task['id'],'status':task['status'],'bytes':task['bytes'],'files':task['files'],'directories':task['directories'],'errors':task['errors'],'partial':task['status']!='succeeded','checked_at':task['updated_at'],
+                    'scope':'递归统计，directories 包含根目录；files 是去重后的普通文件数，不等于当前层条目数',
+                    'basis':'遍历期间的观察值，不是文件系统原子快照；不跟随链接'}
         if name in {'get_action_capabilities','propose_change','propose_restore'}:
             fields={'get_action_capabilities':{'object_id'},'propose_change':{'object_id','action','parameters'},'propose_restore':{'object_id','proposal_id'}}[name]
             if set(args)!=fields or not isinstance(args.get('object_id'),str):return {'error':{'code':'invalid_arguments','message':'参数无效'}}

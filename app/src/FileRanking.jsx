@@ -1,0 +1,9 @@
+import React,{useState} from 'react';
+import {File,FolderOpen,Copy,ExternalLink} from 'lucide-react';
+const size=n=>n>=2**30?(n/2**30).toFixed(2)+' GiB':n>=2**20?(n/2**20).toFixed(1)+' MiB':n>=1024?(n/1024).toFixed(1)+' KiB':n+' B';
+export default function FileRanking({task,post}){
+ const [selected,setSelected]=useState(null),[busy,setBusy]=useState(false),[message,setMessage]=useState('');
+ const files=(task.largest_files||[]).slice().sort((a,b)=>b.bytes-a.bytes);
+ async function act(action,path){setBusy(true);setMessage('');try{if(action==='copy'){await navigator.clipboard.writeText(path);setMessage('路径已复制')}else{await post('file-action',{action,path});setMessage(action==='open'?'已交给默认应用打开':'已在文件夹中显示')}}catch(e){setMessage(e.message)}finally{setBusy(false)}}
+ return <div className="file-ranking"><p className="space-note">{task.path} · 按单个文件大小排序，最多显示 200 项{task.status!=='succeeded'?' · 仅列出已扫描的文件':''}</p>{message&&<p role="status">{message}</p>}<ol>{files.map(file=><li key={file.path}><button className="rank-file" aria-expanded={selected===file.path} onClick={()=>setSelected(selected===file.path?null:file.path)}><File size={15}/><span><strong>{file.name}</strong><small>{file.path}</small></span><span>{size(file.bytes)}</span></button>{selected===file.path&&<div className="inline-file-actions">{/\.(txt|md|markdown|json|yaml|yml|toml|ini|log|csv|tsv|pdf|doc|docx|xls|xlsx|ppt|pptx|odt|ods|rtf|png|jpg|jpeg|gif|webp|bmp|svg|mp3|wav|mp4|mkv|mov)$/i.test(file.path)&&<button className="text-button" disabled={busy} onClick={()=>act('open',file.path)}><ExternalLink size={13}/>打开</button>}<button className="text-button" disabled={busy} onClick={()=>act('reveal',file.path)}><FolderOpen size={13}/>在文件夹中显示</button><button className="text-button" disabled={busy} onClick={()=>act('copy',file.path)}><Copy size={13}/>复制路径</button></div>}</li>)}</ol>{!files.length&&<p className="space-note">本次统计尚未记录文件。</p>}</div>;
+}

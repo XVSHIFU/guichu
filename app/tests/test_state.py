@@ -10,6 +10,10 @@ import server
 
 class StateTests(unittest.TestCase):
     def setUp(self):
+        for name, result in [('automatic_sources', []), ('collect_registered', {}), ('collect_packages', {}), ('collect_windows_apps', {}), ('collect_managers', {})]:
+            mocked=patch.object(server,name,return_value=result)
+            mocked.start();self.addCleanup(mocked.stop)
+        icons=patch.object(server,'enrich_icons');icons.start();self.addCleanup(icons.stop)
         self.temp=tempfile.TemporaryDirectory()
         self.previous=server.DB
         server.DB=Path(self.temp.name)/'test.sqlite3'

@@ -78,6 +78,11 @@ class DirectorySizeTests(unittest.TestCase):
             task = self.wait(payload['task']['id'])
         self.assertEqual(task['status'], 'succeeded')
         self.assertEqual((task['bytes'], task['files'], task['directories'], task['hardlinks']), (40, 2, 2, 1))
+        tree={node['name']:node for node in task['tree']}
+        self.assertEqual(tree['nested']['bytes'],23)
+        self.assertTrue(tree['nested']['complete'])
+        self.assertEqual(tree[self.directory.name]['bytes'],40)
+        self.assertEqual(task['largest_files'][0]['bytes'],23)
         sizes.initialize(self.connection)
         self.assertEqual(self.call('get', id=task['id'])[0]['task'], task)
         self.assertEqual(self.call('list')[0]['tasks'][0]['id'], task['id'])
@@ -131,6 +136,8 @@ class DirectorySizeTests(unittest.TestCase):
             payload, _ = self.start()
             task = self.wait(payload['task']['id'])
         self.assertEqual((task['status'], task['errors'], task['bytes']), ('partial', 1, 3))
+        self.assertEqual(task['issue_counts'], {'permission': 1})
+        self.assertTrue(task['issue_samples'][0]['path'].endswith('denied'))
 
     def test_cancel_is_observed_between_entries_and_keeps_progress(self):
         for i in range(10):
@@ -167,6 +174,31 @@ class DirectorySizeTests(unittest.TestCase):
         self.assertEqual(task['status'], 'interrupted')
         sizes.initialize(self.connection)
         self.assertEqual(self.call('get', id=rid)[0]['task'], task)
+
+    def test_unvisited_sibling_is_not_reported_complete(self):
+        for name in ('Windows', 'Users'):
+            (self.directory / name).mkdir()
+            (self.directory / name / 'file').write_bytes(b'abc')
+        with patch.object(sizes, 'MAX_ENTRIES', 2):
+            payload, _ = self.start()
+            task = self.wait(payload['task']['id'])
+        children = [n for n in task['tree'] if n['parent'] == str(self.directory)]
+        self.assertEqual(len(children), 2)
+        self.assertTrue(all(not n['complete'] for n in children))
+        self.assertTrue(all(n['bytes'] == 0 for n in children))
+        self.assertFalse(next(n for n in task['tree'] if n['parent'] is None)['complete'])
+
+    def test_extended_mode_uses_larger_budget_and_binds_request(self):
+        for i in range(4):
+            (self.directory / str(i)).write_bytes(b'abc')
+        with patch.object(sizes, 'MAX_ENTRIES', 1):
+            payload, status = self.call('start', path=str(self.directory), request_id='extended', scan_mode='extended')
+            self.ids.append(payload['task']['id'])
+            task = self.wait(payload['task']['id'])
+        self.assertEqual(task['status'], 'succeeded')
+        self.assertEqual(task['files'], 4)
+        self.assertEqual(self.call('start', path=str(self.directory), request_id='extended', scan_mode='standard')[1], 409)
+        self.assertEqual(self.call('start', path=str(self.directory), request_id='bad-mode', scan_mode='invalid')[1], 400)
 
     def test_invalid_paths_and_linked_ancestors_rejected(self):
         for path in ('relative', '//server/share', '\\\\server\\share'):

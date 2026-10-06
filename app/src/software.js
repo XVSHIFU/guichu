@@ -9,6 +9,10 @@ const rules=[
  ['影音与创作',/photoshop|illustrator|adobe|blender|figma|obs studio|剪映|音乐|music|vlc|potplayer|视频|video|capture|录屏|snipaste|picgo|网易云|哔哩/i],
  ['系统与驱动',/driver|驱动|nvidia|intel|realtek|amd |microsoft update|windows.*(update|health)|vulkan|directx|physx|chipset|bandizip|7-zip|winrar|everything|treesize|geek|vmware|virtualbox|coodesker|mayenano|卸载|安全|组件/i]
 ];
-export function softwareCategory(o){if(softwareCategories.slice(1).includes(o.manualCategory))return o.manualCategory;if(o.kind==='agent')return 'AI Agent';return rules.find(([,pattern])=>pattern.test(o.name))?.[0]||'其他软件'}
+export function softwareCategory(o){if(softwareCategories.slice(1).includes(o.manualCategory))return o.manualCategory;if(isAgent(o))return 'AI Agent';if(o.distribution)return '开发工具';return rules.find(([,pattern])=>pattern.test(o.name))?.[0]||'其他软件'}
 const collator=new Intl.Collator('en',{numeric:true,sensitivity:'base'});
 export function compareSoftware(a,b){return collator.compare(pinyin(a.name,{toneType:'none',nonZh:'consecutive'}),pinyin(b.name,{toneType:'none',nonZh:'consecutive'}))||a.id.localeCompare(b.id)}
+
+export const isAgent=o=>o.capabilities?o.capabilities.includes('agent'):o.kind==='agent';
+export const installDrive=o=>o.installDrive||((o.executable||(o.kind==='software'?o.path:''))?.match(/^[a-z]:/i)?.[0].toUpperCase())||'位置待确认';
+export function groupedSoftware(rows){const groups=new Map();for(const o of rows){const disk=installDrive(o),category=softwareCategory(o);if(!groups.has(disk))groups.set(disk,new Map());const categories=groups.get(disk);if(!categories.has(category))categories.set(category,[]);categories.get(category).push(o)}return [...groups].sort(([a],[b])=>(a==='位置待确认')-(b==='位置待确认')||a.localeCompare(b)).map(([disk,categories])=>({disk,categories:[...categories]}))}

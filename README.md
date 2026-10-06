@@ -2,31 +2,32 @@
 
 **电脑里的每个工具，都有归处。**
 
-归处是面向 Windows 的本机环境工作台，将软件、AI Agent、技能、MCP 和目录串成可搜索、可理解、可管理的清单。
+归处是面向 Windows 的本机环境工作台：找到安装的软件和 AI Agent，看清它们的安装位置、配置、技能与 MCP；再通过目录地图和助手，决定如何整理。
 
-[下载 Windows x64 便携版](https://github.com/XVSHIFU/guichu/releases/latest/download/guichu-release-windows-x64.zip) · [版本说明与校验文件](https://github.com/XVSHIFU/guichu/releases/latest)
+[下载 Windows x64 便携版](https://github.com/XVSHIFU/guichu/releases/latest) · [更新日志](CHANGELOG.md) · [使用说明](app/README.md)
 
-## 能做什么
+> 本页展示当前源码版本。已发布便携包的功能以对应 Release 说明为准，本次源码更新不代表便携包同步发布。
 
-- **了解本机环境**：扫描软件与开发工具，查看来源、安装位置和对象关联。
-- **梳理目录**：按磁盘浏览目录，按需统计大小，保存分类与备注。
-- **询问归处助手**：接入 OpenAI 兼容模型，查询环境、诊断配置、生成变更预览。
-- **确认后再修改**：在聊天中确认受支持的操作，查看执行结果、冲突与恢复记录。
-- **管理 MCP 连接**：接入本机 stdio 和远程 Streamable HTTP MCP 服务。
-- **保留使用记录**：会话、执行轨迹和长会话摘要持久化保存。
-- **选择自己的配色**：28 套主题，各有深浅版本，支持跟随系统与主题转盘切换。
+![归处工作台](docs/images/workbench.jpg)
+
+## 从找到，到看懂，再到整理
+
+- **软件与 Agent**：按磁盘、分类、安装渠道查找工具，分别查看安装目录、程序入口和配置目录。CLI、桌面版和不同安装实例分别保留。
+- **技能与连接**：集中查看 Skill、插件和 MCP，了解来源与关联工具；勾选多个对象，一起交给助手分析。
+- **目录地图**：用矩形图定位空间占用，点击文件夹逐层放大；末级目录展开文件，文件排行帮助定位大文件。
+- **归处助手**：连接自己的 OpenAI 兼容模型，查询本机证据、解释工具用途、生成受支持操作的修改预览。过程可折叠，指令可自定义。
+- **变化记录**：对象变化、检查记录、操作记录分开查看；检查详情按需展开。
+- **自己的外观**：28 套配色，支持浅色、深色与跟随系统，通过主题转盘或色样切换。
 
 ## 快速开始
 
-### 便携版
+### 使用便携版
 
-1. 下载并完整解压 Windows x64 便携包。
-2. 双击「启动工作台.cmd」，浏览器打开 [本机工作台](http://127.0.0.1:8765/)。
-3. 如需使用助手，进入「设置 → 模型连接」，填写自己的服务地址、模型与密钥。
+1. 在 [Releases](https://github.com/XVSHIFU/guichu/releases/latest) 下载 Windows x64 便携包，完整解压。
+2. 双击 **启动工作台.cmd**，浏览器打开 [本机工作台](http://127.0.0.1:8765/)。
+3. 检查本机清单；如需助手，在 **设置 → 模型连接** 中填写服务地址、模型与密钥。
 
-无需另装 Python 或 Node.js。关闭网页不会停止服务，退出时请运行「停止工作台.cmd」。
-
-![便携版启动](https://raw.githubusercontent.com/XVSHIFU/Picture-bed/img/image-20261004091711388.png)
+便携版无需另装 Python 或 Node.js。关闭网页不会停止服务，退出时运行 **停止工作台.cmd**。
 
 ### 从源码启动
 
@@ -34,135 +35,87 @@
 
 ```powershell
 git clone https://github.com/XVSHIFU/guichu.git
-cd guichu/app
-python -m pip install -r requirements.txt
-npm ci
-npm run build
-cd ..
+cd guichu
+python -m pip install -r app/requirements.txt
+npm ci --prefix app
+npm --prefix app run build
 .\启动工作台.cmd
 ```
 
-### 数据与备份
-
-清单与会话保存在本机。使用模型时，请求和相关上下文会发送到你配置的模型服务。
-
-- 「备份工作台.cmd」：备份工作台数据库。
-- 「导出工作台.cmd」与「恢复工作台.cmd」：迁移工作台数据，操作前需停止服务；恢复后需重新配置模型密钥。
-- 配置变更先预览，再由用户确认执行。具体能力和限制见 [应用说明](app/README.md)。
-
-构建、迁移范围及恢复步骤见 [便携版说明](docs/PORTABLE.md)。
-
 ## 功能展示
 
-以下截图来自本机使用，扫描内容与可用操作会随电脑环境而不同。
+以下是当前版本的实机截图。清单、统计结果和可用操作随本机环境而不同。
 
-### 电脑里的工具，都有归处
+### 软件的位置与来源
 
-在工作台集中查看常用工具、环境速览和磁盘空间。
+按安装磁盘筛选，也可以结合分类、安装渠道和 Agent 标记查找。系统组件与软件附属程序默认隐藏，需要时可显示。安装渠道和下载来源分开记录，没有证据时保留未知，也允许手动补充。
 
-![工作台概览](https://raw.githubusercontent.com/XVSHIFU/Picture-bed/img/image-20261004092351170.png)
+![软件与 Agent](docs/images/software.jpg)
 
-### 找到工具，也找到它的关联
+扫描覆盖 Windows 软件登记、应用包、常见目录、登记目录，以及可发现的 npm、pnpm、pip、Conda、Scoop、Chocolatey、pipx、uv 等安装记录；不同渠道的识别覆盖并不相同。任意自定义位置、全部虚拟环境与下载历史不保证自动发现。
 
-点击软件或 Agent，先在右侧查看概览，再打开详情了解位置、技能与连接。
+### 多个能力，一起交给助手
 
-![软件与 Agent 列表及侧边概览](https://raw.githubusercontent.com/XVSHIFU/Picture-bed/img/image-20261004092453625.png)
+在软件页或技能与连接页勾选对象，查看选择摘要，再交给助手。一次最多附带 20 项；带入上下文后可以编辑问题，不会自动发送或执行修改。
 
-![对象详情与关联信息](https://raw.githubusercontent.com/XVSHIFU/Picture-bed/img/image-20261004092525505.png)
+![技能与连接](docs/images/abilities.jpg)
 
-### 技能与连接，一处查看
+配置存在、配置启用和连接可用是不同状态。归处保留检查依据，不把发现配置当成连接测试通过。
 
-查看已发现的技能与 MCP，了解它们的来源、位置和关联宿主。发现配置不代表连接已通过可用性测试。
+### 看清空间分布
 
-![技能与连接清单](https://raw.githubusercontent.com/XVSHIFU/Picture-bed/img/image-20261004092615850.png)
+目录树支持逐层下钻、返回上级和小项分组；缺失子目录统计时在原位置补充。文件排行展示本次统计中最大的 200 个文件，不是删除建议。
 
-![技能与连接详情](https://raw.githubusercontent.com/XVSHIFU/Picture-bed/img/image-20261004092640347.png)
+![目录空间分析](docs/images/directories.jpg)
 
-### 目录占用，看清再处理
+普通统计按需运行；整盘或大目录可选择 **深入统计**，最多 30 分钟、500 万项，可随时停止。未统计、权限不足和部分结果会明确显示。链接不重复遍历，硬链接只计一次；显示的是逻辑大小，与磁盘实际占用可能不同。
 
-按层浏览目录，需要时再统计大小，为整理提供依据。
+Windows 可选择 **以管理员权限统计**：仅提升扫描进程，由系统弹窗授权。管理员权限仍不保证能读取全部受保护文件。
 
-![目录地图](https://raw.githubusercontent.com/XVSHIFU/Picture-bed/img/image-20261004092702244.png)
+### 记录有迹可查
 
-![目录大小统计](https://raw.githubusercontent.com/XVSHIFU/Picture-bed/img/image-20261004092723697.png)
+将对象变化、检查任务和已执行操作分开查看，避免长日志挤在同一页。对象变化支持搜索，检查详情折叠，历史记录按需加载。
 
-### 直接问你的环境
+![检查记录](docs/images/history.jpg)
 
-选择一个工具作为上下文，让助手解释它的位置、关联和配置情况。
+### 让助手帮助判断
 
-![归处助手回答环境问题](https://raw.githubusercontent.com/XVSHIFU/Picture-bed/img/image-20261004093043609.png)
+例如，选中几个不熟悉的软件后询问：
 
-<details>
-<summary>查看模型连接设置</summary>
+> 逐项解释这些工具的用途、安装和配置位置，检查是否存在重复记录，先给出整理建议。
 
-支持添加 OpenAI 兼容服务，管理模型目录、测试连接，并设置调用预算。
+或者：
 
-![模型提供商列表](https://raw.githubusercontent.com/XVSHIFU/Picture-bed/img/image-20261004091851156.png)
+> 检查这个 MCP 的配置，说明当前证据能确定什么；需要修改时先展示预览。
 
-![模型连接配置](https://raw.githubusercontent.com/XVSHIFU/Picture-bed/img/image-20261004091911398.png)
+受支持的修改由用户确认后执行，结果与备份信息保存在记录中。助手的自定义指令可以编辑；其判断仍需要结合实际证据，不能替代工具尚未提供的能力。
 
-</details>
+## 数据与备份
 
-### 每一步，都能回看
+清单、备注与会话保存在本机。使用助手时，请求及相关上下文会发送到你配置的模型服务。
 
-助手过程展示参考了 DeepSeek Harness 的交互方式。可以展开实际工具调用，查看读取结果与执行轨迹；最终回答独立呈现。
+- **备份工作台.cmd**：备份工作台数据库。
+- **导出工作台.cmd / 恢复工作台.cmd**：迁移工作台数据，操作前停止服务；恢复后重新配置模型密钥。
+- 软件隐藏、分类和筛选不会删除实际文件；具体操作能力见 [应用说明](app/README.md)。
 
-![助手执行过程](https://raw.githubusercontent.com/XVSHIFU/Picture-bed/img/image-20261004092124235.png)
+构建与迁移步骤见 [便携版说明](docs/PORTABLE.md)。
 
-![助手轨迹与工具记录](https://raw.githubusercontent.com/XVSHIFU/Picture-bed/img/image-20261004093201012.png)
+## 开发
 
-![展开查看处理过程](https://raw.githubusercontent.com/XVSHIFU/Picture-bed/img/image-20261004093323985.png)
-
-### 先看修改，再决定执行
-
-受支持的修改会生成提案，展示目标、前后差异和备份位置。用户可以确认执行，也可以拒绝。
-
-下图是 **待确认的停用预览**，并不表示 MCP 已被停用。实际结果以操作记录为准。
-
-![MCP 停用提案，等待用户确认](https://raw.githubusercontent.com/XVSHIFU/Picture-bed/img/image-20261004093423784.png)
-
-## 项目结构
-
-| 路径 | 内容 |
-| --- | --- |
-| `app/src/` | React 界面与主题 |
-| `app/public/` | 浏览器图标和静态资源 |
-| `app/agent/` | 产品指令、技能、上下文和工具 |
-| `app/*.py` | 本机服务、采集、模型及操作处理 |
-| `app/tests/` | 后端与浏览器测试 |
-| `scripts/` | 便携版构建与固定场景验收 |
-| `docs/` | 使用说明与实施计划 |
-| `PRODUCT.md` / `DESIGN.md` | 产品与设计约定 |
-
-应用源码位于 `app/`，根目录启动脚本会自动定位应用。运行数据、密钥、备份、构建产物和测试截图均已加入 Git 忽略规则；本机旧清单归档 `local-archive/` 不进入仓库。
-
-## 开发验证
-
-在仓库根目录运行：
+React 界面位于 `app/src/`，Python 本机服务与扫描器位于 `app/`，Agent 指令与技能位于 `app/agent/`。运行数据、凭据、备份和测试产物不进入仓库；README 展示截图保存在 `docs/images/`。
 
 ```powershell
-# 后端测试
 python -m unittest discover -s app/tests -p "test_*.py"
-
-# Agent 固定场景验收，不调用真实模型服务
 python scripts/verify_agent.py
-
-# 前端构建
 npm --prefix app run build
-```
-
-工作台启动后，可运行核心浏览器回归：
-
-```powershell
+# 启动工作台后运行隔离的核心界面回归
 npm --prefix app run test:ui:core
 ```
 
-[平台计划](docs/PLAN.md) · [Agent 计划](docs/AGENT-PLAN.md) · [便携版与迁移](docs/PORTABLE.md) · [社区主题来源](docs/COMMUNITY-THEMES.md)
+[用户要求与完善清单](docs/USER-REQUIREMENTS.md) · [实施计划](docs/PLAN.md) · [Agent 验收记录](docs/AGENT-PLAN.md) · [社区主题来源](docs/COMMUNITY-THEMES.md)
 
-## 社区
+## 社区与许可
 
 [LINUX DO](https://linux.do/) · 开发者交流社区。
 
-## 许可证
-
-MIT。第三方依赖、图标、字体与社区主题遵循各自的许可证。
+MIT。第三方依赖、图标、字体与社区主题遵循各自许可证。

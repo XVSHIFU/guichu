@@ -41,6 +41,13 @@ def _target(value, objects):
     return {key: obj.get(key, '') for key in ('id', 'name', 'path', 'kind', 'source')}
 
 
+def _targets(body, objects):
+    values = body.get('target_ids') if 'target_ids' in body else ([body['target_id']] if body.get('target_id') else [])
+    if not isinstance(values, list) or len(values) > 20 or any(not isinstance(v, str) or not v for v in values):
+        raise ValueError('一次最多选择20个有效对象')
+    return [_target(value, objects) for value in dict.fromkeys(values)]
+
+
 def _text(body, key, limit, required=False):
     value = body.get(key, '')
     if not isinstance(value, str) or len(value) > limit or (required and not value.strip()):
@@ -64,10 +71,12 @@ def dispatch(connection, route, body, objects):
             if action == 'list':
                 sessions = [json.loads(row[0]) for row in db.execute('SELECT payload FROM assistant_sessions')]
                 sessions.sort(key=lambda s: s['updated_at'], reverse=True)
-                return {'sessions': [{k: s[k] for k in ('id', 'title', 'updated_at', 'target', 'mode')} for s in sessions]}, 200
+                return {'sessions': [{**{k: s[k] for k in ('id', 'title', 'updated_at', 'target', 'mode')},
+                                      'targets':s.get('targets', [s['target']] if s.get('target') else [])} for s in sessions]}, 200
             if action == 'create':
+                targets = _targets(body, objects)
                 session = dict(id=_id(), title='新对话', updated_at=_now(), mode='readonly', draft='',
-                               target=_target(body.get('target_id'), objects), messages=[], active_run_id=None)
+                               target=targets[0] if targets else None, targets=targets, messages=[], active_run_id=None)
             else:
                 sid = body.get('id')
                 if not isinstance(sid, str) or not sid:
@@ -92,8 +101,9 @@ def dispatch(connection, route, body, objects):
                         session['title'] = _text(body, 'title', 120, True).strip()
                     if 'draft' in body:
                         session['draft'] = _text(body, 'draft', 8000)
-                    if 'target_id' in body:
-                        session['target'] = _target(body['target_id'], objects)
+                    if 'target_id' in body or 'target_ids' in body:
+                        session['targets'] = _targets(body, objects)
+                        session['target'] = next(iter(session['targets']), None)
             session['updated_at'] = _now()
             db.execute('INSERT INTO assistant_sessions VALUES (?, ?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload',
                        (session['id'], json.dumps(session, ensure_ascii=False)))

@@ -75,21 +75,24 @@ def start(connection,body,inventory,provider,tools_module,action_context=None):
             for active in db.execute('SELECT payload FROM assistant_runs WHERE session_id=?',(sid,)):
                 if json.loads(active[0])['status'] not in TERMINAL:return {'error':'此对话仍有运行中的任务'},409
             objects=inventory.get('objects',[]);relations=inventory.get('relations',[])
+            targets=session.get('targets', [session['target']] if session.get('target') else [])
+            target_ids={o['id'] for o in targets}
             target=(session.get('target') or {}).get('id')
+            if len(target_ids)>1 and target_ids-{o['id'] for o in objects}:return {'error':'部分已选对象已不在清单，请重新选择'},409
             target_missing=bool(target and not any(o['id']==target for o in objects))
             if target_missing:
                 restorable=any((p:=json.loads(row[0])).get('state')=='applied' and p.get('object',{}).get('id')==target for row in db.execute('SELECT payload FROM agent_proposals WHERE session_id=?',(sid,)))
                 if not restorable:return {'error':'历史目标已不存在，请重新选择对象'},409
-            allowed={target} if target else {o['id'] for o in objects}
+            allowed=set(target_ids) if target_ids else {o['id'] for o in objects}
             if target:
                 for r in relations:
-                    if r['from']==target:allowed.add(r['to'])
-                    if r['to']==target:allowed.add(r['from'])
+                    if r['from'] in target_ids:allowed.add(r['to'])
+                    if r['to'] in target_ids:allowed.add(r['from'])
             eligible=[m for m in session['messages'] if m.get('mode')=='readonly' and m.get('role') in ['user','assistant']]
             history=[{'role':m['role'],'content':m['text']} for m in eligible]
             history_trimmed=len(eligible)>12 or sum(len(m['text']) for m in eligible)>18000 or any(len(m['text'])>6000 for m in eligible)
             rid=uuid.uuid4().hex
-            run={'target_missing':target_missing,'history_trimmed':history_trimmed,'prompt_version':agent_context.VERSION,'policy_version':agent_context.VERSION,'skill_versions':{},'context_sources':['task','bounded_history','proposal_decisions']+(['selected_object'] if target else []),'id':rid,'session_id':sid,'request_id':request_id,'target':session.get('target'),'allowed_ids':sorted(allowed),'input':text,'status':'queued','answer':'','created_at':now(),'updated_at':now(),'mode':'readonly','usage':{},'error':None}
+            run={'target_missing':target_missing,'history_trimmed':history_trimmed,'prompt_version':agent_context.VERSION,'policy_version':agent_context.VERSION,'skill_versions':{},'context_sources':['task','bounded_history','proposal_decisions']+(['selected_object'] if target else []),'id':rid,'session_id':sid,'request_id':request_id,'target':session.get('target'),'targets':targets,'allowed_ids':sorted(allowed),'input':text,'status':'queued','answer':'','created_at':now(),'updated_at':now(),'mode':'readonly','usage':{},'error':None}
             db.execute('INSERT INTO assistant_runs VALUES (?,?,?,?)',(rid,sid,request_id,json.dumps(run,ensure_ascii=False)))
             session['messages'].append({'id':uuid.uuid4().hex,'role':'user','text':text,'run_id':rid,'mode':'readonly'})
             session.update(draft='',mode='readonly',active_run_id=rid,updated_at=now(),plan=None,accepted=False)
@@ -180,7 +183,7 @@ def run_worker(connection,run,objects,relations,provider,tools_module,cancel,his
                     event(connection,rid,'tool_finished',name=t['name'],ok=False,round_id=round_id,call_id=call_id,parent_id=None,result={'error':{'code':'cancelled' if isinstance(exc,InterruptedError) else 'timeout'}},elapsed_ms=round((time.monotonic()-before)*1000))
                     raise
                 except (ValueError,KeyError,TypeError):result={'error':{'code':'invalid_arguments','message':'工具参数无效或超出本次允许范围'}}
-                safe_result=agent_context.safe(result)
+                safe_result=agent_context.safe_tool_result(result)
                 messages.append({'role':'tool','tool_call_id':t['id'],'content':json.dumps(safe_result,ensure_ascii=False)})
                 event(connection,rid,'tool_finished',name=t['name'],ok=not bool(result.get('error')),round_id=round_id,call_id=call_id,parent_id=None,result=safe_result,cached=cached,elapsed_ms=round((time.monotonic()-before)*1000))
                 if t['name']=='load_skill' and not result.get('error'):

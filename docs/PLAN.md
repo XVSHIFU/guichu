@@ -298,3 +298,107 @@ P0–P4限定范围的交付完成：日常主线可从对象进入助手，前�
 ## 2026-10-03 专用Agent收尾完成
 
 在原P0–P4基础上，完成专用Prompt/6技能/命令/工具、聊天提案确认恢复、MCP客户端及界面；进一步完成预算一致性、同任务静态查询复用、长会话语义压缩、批量软件分类、Claude用户MCP注册移除/恢复与远程Streamable HTTP。详细范围、分工及实测证据见 `AGENT-PLAN.md` 第14–15节。当前限定范围无待接入模块；用户真实配置的修改仍由用户在产品内确认，开发验收未修改用户软件配置。
+
+
+## 2026-10-06 定向扫描与证据链改善
+
+重新核对 main/origin/main 为 48b15bb，工作区起始干净；Verify 37169057909 成功，v0.1.0 发行资产仍在，至 HEAD 仅 README 改动。未推送、发布或修改用户被管理软件。
+
+先只读抽查最近实际快照中的 Codex、一个用户 MCP、一个软件注册项，再以临时 HOME/配置/目录复现。旧快照时间为 2026-10-03，不能当作本次实时全机检查。
+
+已复现并修复：
+- Codex 配置损坏错误保留另一正常配置已删除的 MCP：用户 MCP 按配置文件保留失败记录，并兼容旧组键。
+- 模型侧将 40 项裁成 30 项却保持 truncated=false：二次裁剪明确标记不完整。
+- 目录实时工具只返回旧收录时间：单列 observed_at 和当前层范围；递归统计补根目录与去重口径。
+- 同名进程、入口发现被过度表述为运行/可用：采集与展示改用观察事实；进程读取失败不计为零。命令指向目录不算入口文件，MCP 开关类型错误标记部分失败。
+- 来源表单接受网络共享而后端拒绝：前端与本机路径限制一致。
+
+验证：采集/快照/登记整合/扫描任务、助手工具/运行器/记忆专项及 scripts/verify_agent.py 通过；前端构建、隔离 evidence-ui 浏览器回归通过，检查1304与390宽度截图，保留先概览后详情的交互。真实模型结果与边界见 AGENT-PLAN 最新章节。
+
+审查边界与后续优先项：技能/插件仍使用较粗来源组；同一入口跨登记来源、注册表视图可能重复，不能按名称自动合并；仅检查已知宿主及约定项目配置，未验证全量漏项。本轮未扩大全盘扫描、未改对象身份或自动合并。ScanHistory 保留既有来源汇总，尚未实现逐文件错误详情。
+
+
+## 2026-10-06 软件身份与安装来源扩展
+
+- 软件 / Agent 改为可重叠身份标签；已知产品规则与用户手动标记分别说明依据，不授予执行能力，不证明签名或运行状态。保留既有对象 ID 与操作接口。
+- 软件列表按安装磁盘 → 用途分组，支持跨盘搜索、磁盘筛选。配置目录不作为安装位置；无依据的安装位置保留待确认。
+- 便携卸载、更新等辅助入口保留对象及记录，默认列表隐藏，辅助入口筛选可查；同目录仅一个主入口时建立关联。
+- npm 包的 bin 与 Python dist-info 的 console_scripts / gui_scripts 纳入扫描；只读元数据，不执行命令或导入模块。不同环境保留独立实例；同命令前缀的 npm 安装与原配置对象建立关联，列表避免重复。
+- 自动范围：APPDATA/npm、PATH 中各命令目录对应 node_modules / Lib/site-packages、当前 Python 环境。设置可登记额外 node_modules / site-packages。普通无入口依赖不展示。
+- 限制：不遍历所有磁盘寻找环境；未自动遍历 npx 缓存、所有虚拟环境、WSL、源码启动项目。链接目录跳过并报告不完整。每来源最多1500项，单元数据512KiB；入口只是包声明，未验证可运行。
+- Python 包来源不能据此断言由 pip 安装；安装器可能是 conda 等。
+- 识别参考：[DSH 官方仓库](https://github.com/deepseek-ai/deepseek-harness)、[pi 官方仓库](https://github.com/earendil-works/pi)，核对 @deepseek-ai/dsh 和 @earendil-works/pi-coding-agent 包标识。
+
+### 软件列表布局收敛
+
+软件页按「磁盘按钮 → 搜索和用途筛选 → 列表」组织。去掉重复的软件/全部身份标签，保留「仅看 Agent」「显示辅助入口」两个开关。磁盘按钮来自扫描磁盘与已发现安装盘，去重排序，最多10个实际盘符；未发现时提示检查，不伪造盘符，超过10个仍可通过全部位置搜索。位置待确认独立入口。未选对象时列表占满内容宽度，选择后显示简览。简览与详情分别标注安装位置、程序入口和配置位置，不再把配置路径当作安装目录。
+
+生产构建、界面检查通过；内置浏览器验证磁盘 + Agent、搜索 + 辅助入口组合。
+
+
+### 2026-10-06 通用位置发现、多对象整理与空间分析
+
+- 通用发现取代 CCSwitch 专用路径：注册表安装目录、目录内与产品同名的 EXE、PATH、包环境和常见配置目录组合取证。注册表 DisplayIcon 仅列为图标资源，不冒充主程序。数据目录同名匹配显示为候选；不读取配置内容，不执行扫描出的软件。
+- 自动加入 Program Files、LocalAppData/Programs 及已扫描磁盘上的 ProgramAll、Apps、Tools；沿用有边界的根目录/直接子目录扫描。不是任意位置全盘发现。安装目录入口检查最多200项，常见数据根目录最多1500项，每对象最多30个位置；受权限、链接和命名规则限制。无法保证每个软件的所有配置位置。
+- 同一注册表键的重复视图，以及名称、发布者、版本、安装路径均相同的同范围注册记录，合并列表展示；原对象ID与来源关联保留。不同安装路径不合并。Xftp/Xshell 的 InstallShield 与 MSI 双记录实机验证各显示一项。
+- 软件列表增加逐项勾选、半选/全选当前结果（上限20）、跨筛选保留、取消与清空。选择栏显示隐藏在筛选外的对象。交给助手创建多对象会话与可编辑整理草稿，不自动发送。
+- 目录地图明确为本地空间分析入口：可取消的递归逻辑大小统计、按大小/名称/文件数排序、逐层目录树、子目录空间矩形图、最大的200个文件、统计历史恢复。目录树最多5000节点，完整统计仍受120秒/200000条目限制；部分结果显式提示。矩形图不包含当前层直接文件，界面注明；不是 TreeSize 的 NTFS MFT 扫描或实际分配空间统计。
+- 参考 TreeSize 官方功能：https://www.jam-software.com/treesize/features.shtml 。本轮没有使用其商业代码。
+
+### 目录地图交互调整
+
+移除首页已收录目录区域。有树形统计结果时隐藏原始文件夹列表，避免点击后跳离统计视图；图块与大小列表统一在现有统计树内下钻，返回上一级使用反向缩放淡出/淡入，遵循减少动态效果设置。叶子目录保留空间图容器、空态及返回入口。构建、内置浏览器下钻/返回/叶子目录验证通过。
+
+末级目录点击图块或目录行就地展开文件名称列表，再次点击收起，保留父层路径和空间图；复用分页目录接口，提供加载、空态、错误重试及读取不完整提示。浏览器实测 references 展开48项、收起及图块重新展开通过，构建通过。
+
+
+### 2026-10-06 安装来源与文件排行
+- 来源分为安装渠道、安装方式、下载来源；扩展 Store、winget、Scoop、Chocolatey、npm/pnpm/Yarn、pip/pipx/uv、Conda、手动与预装等分类。
+- 实际自动证据：Windows 软件登记 / MSI 标记、包元数据、Python INSTALLER。没有 Store / winget / Scoop / Chocolatey 专项采集器，不宣称这些渠道已能自动识别；不把包生态、官网、仓库或目录命名当作安装器或原始下载证据。
+- 来源可按字段人工补充或恢复自动识别，SQLite 独立保存；详情标记人工字段，助手接收分类及人工标记。新增安装渠道筛选。
+- 文件排行只展示扫描范围内最多 200 个单文件，按大小降序，无聚合图或“其他”；提供路径、打开支持的文件、定位与复制。部分扫描明确只覆盖已扫描文件。
+- 验证：17 项相关单测通过，生产构建通过；真实浏览器检查来源详情/恢复自动保存，文件排行实际 200 项、无矩形图，600px 窄屏无横向溢出，返回目录树正常。未执行真实文件打开或真实软件修改。
+
+
+### 2026-10-06 Windows 桌面应用补漏与渠道筛选
+- 新增当前用户 Get-AppxPackage Main + Get-StartApps 元数据采集，固定 PowerShell 脚本、35 秒超时、不运行发现的软件；以 PackageFamilyName 保持升级前后稳定身份，采集失败保留旧记录。
+- 商店签名包归入 Microsoft Store 渠道，下载网页仍未知。保留包标识与开始菜单名称，避免名称差异制造重复安装。
+- Codex 命令行与桌面版分别展示并关联；npm 同前缀的配置去重规则继续保留，不跨环境合并。
+- 渠道筛选仅展示真实清单中出现的渠道；人工补充来源时仍可选完整分类。
+- 本机实测：OpenAI.Codex 26.930.3930.0 为 Store 签名包；Get-StartApps 返回 ChatGPT 名称但 AppID 指向同一 Codex 包，未发现独立 ChatGPT 包。搜索 Codex 得到 2 个实例，选择 Microsoft Store 后仅 1 个桌面实例。
+- 25 项相关测试（Windows apps 4、discovery 8、locations 4、origin 4、assistant tools 5）通过，构建与浏览器筛选验证通过。未修改被管理软件；未提交推送。
+
+
+### 2026-10-06 本地图标覆盖
+- 图标提取统一在安装位置识别完成后执行；等待提取结束再保存扫描，修复首次扫描缺图、第二次扫描才附带缓存 URL 的时序问题。
+- 来源依次尝试：MSIX/AppX 清单 Logo（含缩放变体）、注册表 DisplayIcon、已识别 EXE、开始菜单/桌面同名快捷方式。PNG/JPEG 转为保留比例的 64px PNG；EXE/DLL/ICO 提取资源；不执行快捷方式或软件。
+- 缓存依据资源路径、索引和修改时间；限制清单大小、图片大小、快捷方式遍历深度与图标提取时间。
+- 本机两次相邻扫描均 598 个去重安装对象，本地图标从 171 增至 297；Codex 桌面包图标成功。页面实际 283 张本地图标全部加载成功。
+- 图标单测 3、inventory 14、登记来源集成 1 通过。集成测试补齐其他采集器隔离，避免将真实机器清单混入临时测试。未修改被管理软件，未提交推送。
+
+
+### 2026-10-06 包管理渠道自动采集
+- 新增 manager_inventory：Scoop 新旧 install/manifest 收据、Chocolatey lib 中 nuspec+nupkg、pipx_metadata.json、uv-receipt.toml、pnpm/Yarn 全局目录与实际包元数据。pnpm v11 允许管理目录范围内指向 store 的链接，去重全局目录别名；不跟随到任意外部位置。
+- npm 读取用户 .npmrc 的 prefix 字段及 NPM_CONFIG_PREFIX，不输出或存储其他配置值；扫描实际全局命令包。npm 全局前缀只证明当前管理位置，详情明确不能还原历史安装命令。包内 packageManager 是作者开发配置，绝不据此判定用户安装器。隐藏锁文件须匹配已安装版本。
+- Python INSTALLER 继续区分 pip/uv/Conda；Windows System 签名包识别为系统预装；winget 仅使用卸载登记 WinGetPackageIdentifier，不使用 winget list/catalog 匹配作为安装证明。
+- Scoop 已安装清单 URL、Python direct_url.json 仅归类下载来源（GitHub Releases/包仓库/本地/其他网站），不保存 URL、查询参数或凭据，不从 homepage 推断实际下载来源。
+- 限制：仅扫描已知/配置位置；未有收据的手动安装、非标准管理目录、历史 winget EXE/MSI 安装可能仍未知。Chocolatey、Yarn、pipx 本机无符合条件记录，使用离线夹具验证，不假称本机覆盖。Conda 当前范围仍是 Python 命令包，不是全部环境/库清单。
+- 当前本机去重对象渠道：Scoop 10、npm 5、pnpm 2、uv 1、Conda 94、Microsoft Store 64、系统预装 45、未知 390。真实浏览器选择 npm 显示 5 项，Scoop 显示 10 项；新增管理器采集无错误。已有其他来源未完成检查 9 项未被隐藏。
+- 验证共 46 项通过：manager 10、tool_discovery 8、software_origin 4、registered_integration 1、assistant_tools 5、inventory_sources 14、windows_apps 4。未运行安装/卸载或软件入口，无付费模型调用，未提交推送。
+- 资料：npm hidden lockfile https://docs.npmjs.com/files/package-lock.json/ ；pipx metadata https://pipx.pypa.io/stable/reference/metadata.html ；uv receipt https://github.com/astral-sh/uv/blob/main/crates/uv-tool/src/lib.rs ；Scoop 新收据名 https://github.com/ScoopInstaller/Scoop/releases 。
+
+
+### myEnv 参考审查（用户提供 XVSHIFU/myEnv）
+- 阅读 README、internal/core/inventory.go、inventory_windows.go、package_inventory.go、package_manage_target.go、internal/cli/inventory_output.go；未运行仓库程序或安装依赖。
+- 值得移植：discovery_source/owner/manager/commands 分离；按解释器和包目录分组；Conda environments.txt、Windows Python InstallPath 注册表与版本管理器候选目录；路径规范化与多来源证据合并。
+- 与本批现状对照：npm 自定义 prefix 已实现；Scoop/Chocolatey/pipx/uv/pnpm receipts 为归处本批独立实现。myEnv 的 Node 全局组本身标为 npm/pnpm，不能作为历史安装渠道的确定证据。
+- 后续接入方向：归处负责全机对象、关联、空间与解释；myEnv 负责环境声明、版本切换、安装同步。可移植只读发现规则，或以后另接结构化清单适配器，不把包管理写操作直接并入扫描。
+- 仍待另项实现：将归处 Python 包发现扩展至 Conda 登记环境、完整 Windows Python 登记和 NVM/Volta 等多版本环境；目前不宣称已接入 myEnv 或全机全部环境。
+
+
+### 2026-10-06 系统组件与自定义助手
+- 按上下文将“参考归处”理解为参考 myEnv 改进归处：包扫描新增 Conda environments.txt 与 Windows Python InstallPath 登记候选位置，只读取元数据，不启动解释器。尚未移植 NVM/Volta 等完整运行时识别。
+- Windows 系统签名/SystemApps 应用包/NonRemovable 标记作为系统组件依据；常见文件选择器、开始菜单、桌面体验、登录、安全组件提供名称与用途规则。默认隐藏，用户可勾选“显示系统组件”；发布者 Microsoft 本身不构成隐藏条件。标记是风险提示，不是任意软件绝对不可卸载的断言。
+- 用户自定义指令上限 8000 字，UI/存储/模型上下文一致；该端点请求字节上限 64KiB，支持中文。内置提示强调尊重用户目标、不重复劝阻、说明工具缺口；修改操作仍走已有提案与确认，不声称有任意执行权限。
+- 系统标记 3 项、工具发现 8 项、助手工具 5 项、自定义指令长文本保存及完整注入 1 项通过，构建通过。真实浏览器搜索“文件选择器”默认 0 项，勾选系统组件后 1 项且显示友好名称，取消后隐藏。
+- 未运行真实模型评测，不能宣称助手行为质量全面通过；未修改真实受管软件，未提交推送。

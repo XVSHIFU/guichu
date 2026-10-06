@@ -110,11 +110,62 @@ class AssistantRuntimeTests(unittest.TestCase):
         self.assertEqual([m['text'] for m in session['messages']], ['检查', '答案'])
         self.assertTrue(all(m['run_id'] == rid for m in session['messages']))
         self.assertIsNone(session['active_run_id'])
+
         self.assertEqual(self.session(other)['messages'], [])
         events = final['events']
         self.assertEqual([e['seq'] for e in events], list(range(1, len(events) + 1)))
         resumed, _ = runtime.get(self.connection, rid, after=events[1]['seq'])
         self.assertEqual(resumed['events'], events[2:])
+
+    def test_multiple_targets_authorize_union_not_unrelated_inventory(self):
+        self.inventory['objects'] += [{'id':'c','name':'Related','kind':'directory'}, {'id':'d','name':'Unrelated','kind':'software'}]
+        self.inventory['relations'] = [{'from':'b','to':'c','label':'uses'}]
+        payload, status = store.dispatch(self.connection, '/api/assistant/create', {'target_ids':['a','b']}, self.inventory['objects'])
+        self.assertEqual(status, 200)
+        provider=FakeProvider()
+        result, status=self.start(payload['session']['id'],provider)
+        self.assertEqual(status,202)
+        final=self.wait(result['run']['id'])['run']
+        self.assertEqual(final['allowed_ids'],['a','b','c'])
+        self.assertEqual([o['id'] for o in final['targets']],['a','b'])
+        self.assertIn('selected_objects', json.dumps(provider.calls,ensure_ascii=False))
+
+    def test_directory_terminal_cursor_reaches_provider_and_persisted_trace(self):
+        import directory_browser
+        from types import SimpleNamespace
+
+        class PagingProvider(FakeProvider):
+            def stream_completion(self, messages, catalog, cancel, deadline=None):
+                self.calls.append(copy.deepcopy(messages))
+                results=[json.loads(m['content']) for m in messages if m['role']=='tool']
+                cursor=results[-1]['next_cursor'] if results else ''
+                if cursor is None:
+                    yield {'type':'text','text':'已读取到末页。'}
+                else:
+                    yield {'type':'tool_call','id':'page-'+str(len(results)), 'name':'list_directory',
+                           'arguments':json.dumps({'object_id':'a','cursor':cursor})}
+
+        for count in (0,21):
+            with self.subTest(entries=count):
+                directory=Path(self.temp.name)/('files-'+str(count));directory.mkdir()
+                for i in range(count):(directory/f'item-{i:02}.txt').touch()
+                self.inventory={'objects':[{'id':'a','name':'Files','kind':'directory','path':str(directory)}], 'relations':[]}
+                provider=PagingProvider()
+                with patch.object(directory_browser.psutil,'disk_partitions',return_value=[
+                        SimpleNamespace(mountpoint=directory.anchor,opts='rw')]):
+                    started,status=self.start(self.session()['id'],provider,text='列出全部当前层条目')
+                    self.assertEqual(status,202)
+                    final=self.wait(started['run']['id'])
+                self.assertEqual(final['run']['status'],'succeeded')
+                delivered=[json.loads(m['content']) for m in provider.calls[-1] if m['role']=='tool']
+                persisted=[e['result'] for e in final['events'] if e['type']=='tool_finished']
+                self.assertEqual(delivered,persisted)
+                self.assertEqual(sum(len(p['entries']) for p in delivered),count)
+                self.assertEqual(len(delivered),1 if count==0 else 2)
+                self.assertIsNone(delivered[-1]['next_cursor'])
+                self.assertFalse(delivered[-1]['truncated'])
+                self.assertTrue(delivered[-1]['enumeration_complete'])
+                self.assertEqual(delivered[-1]['read_errors'],0)
 
     def test_duplicate_request_during_and_after_completion_is_idempotent(self):
         sid = self.session()['id']
