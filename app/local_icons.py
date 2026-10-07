@@ -6,6 +6,7 @@ from pathlib import Path
 import re
 import subprocess
 import threading
+import tempfile
 import uuid
 
 EXTRACTION_LOCK=threading.Lock()
@@ -18,7 +19,12 @@ def icon_resource(value):
     match=re.fullmatch(r'"?(.+?\.(?:exe|dll|ico))"?(?:\s*,\s*(-?\d+))?',value,re.I)
     if not match:return None
     path=Path(match[1])
-    if not path.is_absolute() or str(path).startswith(('\\\\','//')) or not path.is_file():return None
+    try:
+        if not path.is_absolute() or str(path).startswith(('\\\\','//')) or not path.is_file():return None
+    except OSError:
+        # Python 3.13 may raise for protected executables where newer pathlib
+        # returns False. One inaccessible resource must not abort the batch.
+        return None
     return path,int(match[2] or 0)
 
 def appx_resources(obj):
@@ -96,8 +102,13 @@ def enrich_icons(objects):
             try:
                 manifest.write_text(json.dumps(list(pending.values())),encoding='utf-8')
                 shell=Path(os.environ.get('SystemRoot',r'C:\Windows'))/'System32/WindowsPowerShell/v1.0/powershell.exe'
-                result=subprocess.run([str(shell),'-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass','-File',str(ROOT/'Extract-Icons.ps1'),'-Manifest',str(manifest),'-Destination',str(CACHE)],capture_output=True,timeout=45,creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
+                with tempfile.TemporaryDirectory(prefix='extract-',dir=CACHE) as temporary:
+                    assert Path(temporary).resolve().is_relative_to(CACHE.resolve())
+                    environment={**os.environ,'TEMP':temporary,'TMP':temporary}
+                    result=subprocess.run([str(shell),'-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass','-File',str(ROOT/'Extract-Icons.ps1'),'-Manifest',str(manifest),'-Destination',str(CACHE)],capture_output=True,timeout=45,env=environment,creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
                 status={'returncode':result.returncode,'requested':len(pending),'available':sum((CACHE/(key+'.png')).is_file() for key in pending)}
+                if result.returncode:
+                    status['error']=getattr(result,'stderr',b'').decode('mbcs',errors='replace')[-3000:]
             except (OSError,subprocess.TimeoutExpired) as exc:
                 status={'error':type(exc).__name__,'requested':len(pending)}
             finally:

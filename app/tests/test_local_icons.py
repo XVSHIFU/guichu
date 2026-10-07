@@ -7,6 +7,28 @@ sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 import local_icons
 
 class IconTests(unittest.TestCase):
+    def test_inaccessible_resource_does_not_abort_other_icons(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp);denied=root/'denied.exe';good=root/'good.exe'
+            good.write_bytes(b'exe')
+            original=Path.is_file
+            def readable(path):
+                if path==denied:raise PermissionError('denied')
+                return original(path)
+            def extract(args,**kwargs):
+                self.assertTrue(Path(kwargs['env']['TEMP']).is_relative_to(root/'cache'))
+                self.assertEqual(kwargs['env']['TEMP'],kwargs['env']['TMP'])
+                import json
+                for item in json.loads(Path(args[args.index('-Manifest')+1]).read_text()):
+                    (root/'cache'/(item['key']+'.png')).write_bytes(b'png')
+                return type('Result',(),{'returncode':0})()
+            objects=[{'kind':'software','name':'Denied','executable':str(denied)},
+                     {'kind':'software','name':'Good','executable':str(good)}]
+            with patch.object(Path,'is_file',readable),patch.object(local_icons,'CACHE',root/'cache'),patch.object(local_icons,'shortcut_resources',return_value={}),patch.object(local_icons.subprocess,'run',side_effect=extract):
+                local_icons.enrich_icons(objects)
+            self.assertNotIn('iconUrl',objects[0])
+            self.assertIn('iconUrl',objects[1])
+
     def test_appx_scale_asset_and_escape_rejection(self):
         with tempfile.TemporaryDirectory() as tmp:
             root=Path(tmp);(root/'Assets').mkdir()
@@ -20,6 +42,8 @@ class IconTests(unittest.TestCase):
             root=Path(tmp);exe=root/'app.exe';exe.write_bytes(b'exe')
             obj={'kind':'agent','name':'Example','_displayIcon':'missing','executable':str(exe)}
             def extract(args,**kwargs):
+                self.assertTrue(Path(kwargs['env']['TEMP']).is_relative_to(root/'cache'))
+                self.assertEqual(kwargs['env']['TEMP'],kwargs['env']['TMP'])
                 import json
                 manifest=Path(args[args.index('-Manifest')+1])
                 for item in json.loads(manifest.read_text()):
